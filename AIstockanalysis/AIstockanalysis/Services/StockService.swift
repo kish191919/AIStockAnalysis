@@ -1,26 +1,17 @@
-// Services/StockService.swift
-import Foundation
-
 import Foundation
 
 public class StockService {
     public static func fetchStockData(symbol: String) async throws -> (dayData: [StockData], monthData: [StockData], newsData: [StockNews], marketSentiment: MarketSentiment) {
-            print("\n🔍 Fetching data from Yahoo Finance for \(symbol)")
-            let (extendedData, monthData) = try await fetchAllData(symbol: symbol)
-            let newsData = try await fetchNewsData(symbol: symbol)
-            let sentiment = try await fetchMarketSentiment()
-            
-            // 최적화된 데이터 구조 생성
-            let optimizedData = createOptimizedOutput(
-                dailyData: extendedData,
-                monthlyData: monthData,
-                newsData: newsData,
-                marketSentiment: sentiment
-            )
-            printOptimizedJSONOutput(optimizedData)
-            
-            return (extendedData, monthData, newsData, sentiment)
-        }
+        print("\n🔍 Fetching data from Yahoo Finance for \(symbol)")
+        let (extendedData, monthData) = try await fetchAllData(symbol: symbol)
+        let newsData = try await fetchNewsData(symbol: symbol)
+        let sentiment = try await fetchMarketSentiment()
+        
+        // 최적화된 JSON 출력
+        printOptimizedJSONOutput(extendedData, monthData, newsData, sentiment)
+        
+        return (extendedData, monthData, newsData, sentiment)
+    }
     
     private static func fetchAllData(symbol: String) async throws -> (dayData: [StockData], monthData: [StockData]) {
         let now = Int(Date().timeIntervalSince1970)
@@ -123,8 +114,6 @@ public class StockService {
                 throw StockError.invalidResponse
             }
             
-            print("📡 News Response Status Code: \(httpResponse.statusCode)")
-            
             struct SearchResponse: Codable {
                 let news: [NewsItem]?
                 
@@ -141,12 +130,8 @@ public class StockService {
             let twoDaysAgo = Date().addingTimeInterval(-2 * 24 * 60 * 60).timeIntervalSince1970
             
             let filteredNews = (searchResponse.news ?? [])
-                .filter { item in
-                    item.providerPublishTime > twoDaysAgo
-                }
-                .sorted { item1, item2 in
-                    item1.providerPublishTime > item2.providerPublishTime
-                }
+                .filter { $0.providerPublishTime > twoDaysAgo }
+                .sorted { $0.providerPublishTime > $1.providerPublishTime }
                 .prefix(8)
                 .map { item in
                     let date = Date(timeIntervalSince1970: item.providerPublishTime)
@@ -157,9 +142,7 @@ public class StockService {
                     )
                 }
             
-            print("📰 Filtered \(filteredNews.count) recent news items")
             return Array(filteredNews)
-            
         } catch {
             print("❌ Error fetching news: \(error)")
             return []
@@ -265,64 +248,80 @@ public class StockService {
         return stockDataArray
     }
     
-    public static func createOptimizedOutput(
-        dailyData: [StockData],
-        monthlyData: [StockData],
-        newsData: [StockNews],
-        marketSentiment: MarketSentiment
-    ) -> OptimizedStockData {
-        let columns = ["date", "open", "close", "high", "low", "volume"]
-        
-        let dailyValues = dailyData.map { data -> [Any] in
-            return [
-                formatDateWithMinutes(data.date),
-                formatPrice(data.open),
-                formatPrice(data.close),
-                formatPrice(data.high),
-                formatPrice(data.low),
-                data.volume
-            ]
-        }
-        
-        let monthlyValues = monthlyData.map { data -> [Any] in
-            return [
-                formatDateOnly(data.date),
-                formatPrice(data.open),
-                formatPrice(data.close),
-                formatPrice(data.high),
-                formatPrice(data.low),
-                data.volume
-            ]
-        }
-        
-        let currentPrice = formatCurrentPrice(dailyData.first?.close ?? 0.0)
-        let simplifiedNews = newsData.map { SimpleNewsTitle(title: $0.title) }
-        
-        return OptimizedStockData(
-            columns: columns,
-            currentPrice: currentPrice,
-            data: OptimizedStockData.DataValues(
-                daily: dailyValues,
-                monthly: monthlyValues
-            ),
-            news: simplifiedNews,
-            marketSentiment: marketSentiment
-        )
-    }
-    
-    private static func printOptimizedJSONOutput(_ optimizedData: OptimizedStockData) {
-        do {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let jsonData = try encoder.encode(optimizedData)
-            if let jsonString = String(data: jsonData, encoding: .utf8) {
-                print("\n📊 Optimized Stock Data JSON Output:")
-                print(jsonString)
+    private static func createCompactJSONOutput(dailyData: [StockData], monthlyData: [StockData], newsData: [StockNews], marketSentiment: MarketSentiment) -> [String: Any] {
+            // 일간 데이터 변환
+            let dailyValues = dailyData.map { data -> [Any] in
+                return [
+                    formatDateWithMinutes(data.date),
+                    formatPrice4(data.open),
+                    formatPrice4(data.close),
+                    formatPrice4(data.high),
+                    formatPrice4(data.low),
+                    data.volume
+                ]
             }
-        } catch {
-            print("Error converting to JSON: \(error)")
+            
+            // 월간 데이터 변환
+            let monthlyValues = monthlyData.map { data -> [Any] in
+                return [
+                    formatDateOnly(data.date),
+                    formatPrice4(data.open),
+                    formatPrice4(data.close),
+                    formatPrice4(data.high),
+                    formatPrice4(data.low),
+                    data.volume
+                ]
+            }
+            
+            // 뉴스 데이터
+            let newsItems = newsData.map { ["t": $0.title] }
+            
+            // 최종 JSON 구조
+            return [
+                "c": ["d","o","c","h","l","v"],
+                "p": formatPrice2(dailyData.first?.close ?? 0.0),
+                "d": [
+                    "d": dailyValues,
+                    "m": monthlyValues
+                ],
+                "n": newsItems,
+                "Mkt Sentiment": [
+                    "VIX": formatPrice2(marketSentiment.vix),
+                    "F&G": formatPrice2(marketSentiment.fearAndGreedIndex)
+                ]
+            ]
         }
-    }
+    private static func formatPrice4(_ price: Double) -> String {
+            // 소수점 4자리까지 버림 후 문자열로 변환
+            let truncated = floor(price * 10000) / 10000
+            return String(format: "%.4f", truncated)
+        }
+        
+    private static func formatPrice2(_ price: Double) -> String {
+            // 소수점 2자리까지 버림 후 문자열로 변환
+            let truncated = floor(price * 100) / 100
+            return String(format: "%.2f", truncated)
+        }
+    
+    private static func printOptimizedJSONOutput(_ dailyData: [StockData], _ monthlyData: [StockData], _ newsData: [StockNews], _ marketSentiment: MarketSentiment) {
+            do {
+                let compactData = createCompactJSONOutput(
+                    dailyData: dailyData,
+                    monthlyData: monthlyData,
+                    newsData: newsData,
+                    marketSentiment: marketSentiment
+                )
+                
+                // JSONSerialization 옵션 수정
+                let jsonData = try JSONSerialization.data(withJSONObject: compactData, options: [])
+                if let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print("\n📊 Compact JSON Output:")
+                    print(jsonString)
+                }
+            } catch {
+                print("Error converting to JSON: \(error)")
+            }
+        }
     
     public static func formatDateWithMinutes(_ date: Date) -> String {
         let formatter = DateFormatter()
@@ -358,14 +357,5 @@ public class StockService {
         } else {
             return "Just now"
         }
-    }
-}
-
-// Extension for number formatting
-extension Int {
-    func formatWithCommas() -> String {
-        let numberFormatter = NumberFormatter()
-        numberFormatter.numberStyle = .decimal
-        return numberFormatter.string(from: NSNumber(value: self)) ?? String(self)
     }
 }
