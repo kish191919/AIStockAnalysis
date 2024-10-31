@@ -27,7 +27,8 @@ public struct OptimizedStockData: Codable {
     let columns: [String]
     let currentPrice: Double
     let data: DataValues
-    let news: [SimpleNewsTitle]  // 제목만 포함
+    let news: [SimpleNewsTitle]
+    let marketSentiment: MarketSentiment  // 추가
     
     struct DataValues: Codable {
         let daily: [[CustomValue]]
@@ -153,4 +154,9 @@ public struct StockNews: Codable {
 // JSON 출력용 간단한 뉴스 구조체
 public struct SimpleNewsTitle: Codable {
     let title: String
+}
+
+public struct MarketSentiment: Codable {
+    let vix: Double
+    let fearAndGreedIndex: Double
 }

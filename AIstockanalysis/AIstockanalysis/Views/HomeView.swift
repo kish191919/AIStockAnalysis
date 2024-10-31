@@ -6,6 +6,7 @@ struct HomeView: View {
     @State private var dayData: [StockData] = []
     @State private var monthData: [StockData] = []
     @State private var newsData: [StockNews] = []
+    @State private var marketSentiment: MarketSentiment = MarketSentiment(vix: 0.0, fearAndGreedIndex: 0.0)
     @State private var isLoading = false
     @State private var errorMessage: String?
     
@@ -58,7 +59,8 @@ struct HomeView: View {
                         symbol: stockSymbol,
                         dayData: dayData,
                         monthData: monthData,
-                        newsData: newsData
+                        newsData: newsData,
+                        marketSentiment: marketSentiment
                     )
                 } else {
                     VStack(spacing: 10) {
@@ -84,13 +86,15 @@ struct HomeView: View {
         dayData = []
         monthData = []
         newsData = []
+        marketSentiment = MarketSentiment(vix: 0.0, fearAndGreedIndex: 0.0)
         
         do {
-            let (day, month, news) = try await StockService.fetchStockData(symbol: stockSymbol.uppercased())
+            let (day, month, news, sentiment) = try await StockService.fetchStockData(symbol: stockSymbol.uppercased())
             await MainActor.run {
                 self.dayData = day
                 self.monthData = month
                 self.newsData = news
+                self.marketSentiment = sentiment
                 self.isLoading = false
             }
         } catch StockError.apiError(let message) {
