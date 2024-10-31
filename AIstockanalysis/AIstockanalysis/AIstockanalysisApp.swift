@@ -1,10 +1,4 @@
-//
-//  AIstockanalysisApp.swift
-//  AIstockanalysis
-//
-//  Created by sunghwan ki on 10/31/24.
-//
-
+// AIstockanalysisApp.swift
 import SwiftUI
 
 @main
