@@ -1,10 +1,5 @@
-//
-//  Persistence.swift
-//  AIstockanalysis
-//
-//  Created by sunghwan ki on 10/31/24.
-//
 
+//Persistence.swift
 import CoreData
 
 struct PersistenceController {

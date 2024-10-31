@@ -5,6 +5,7 @@ struct HomeView: View {
     @State private var stockSymbol: String = ""
     @State private var dayData: [StockData] = []
     @State private var monthData: [StockData] = []
+    @State private var newsData: [StockNews] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
     
@@ -53,7 +54,12 @@ struct HomeView: View {
                     }
                     .padding()
                 } else if !monthData.isEmpty {
-                    StockDetailView(symbol: stockSymbol, dayData: dayData, monthData: monthData)
+                    StockDetailView(
+                        symbol: stockSymbol,
+                        dayData: dayData,
+                        monthData: monthData,
+                        newsData: newsData
+                    )
                 } else {
                     VStack(spacing: 10) {
                         Image(systemName: "chart.line.uptrend.xyaxis")
@@ -71,38 +77,40 @@ struct HomeView: View {
     }
     
     private func fetchStockData() async {
-            guard !stockSymbol.isEmpty else { return }
-            
-            isLoading = true
-            errorMessage = nil
-            dayData = []
-            monthData = []
-            
-            do {
-                let (day, month) = try await StockService.fetchStockData(symbol: stockSymbol.uppercased())
-                await MainActor.run {
-                    self.dayData = day
-                    self.monthData = month
-                    self.isLoading = false
-                }
-            } catch StockError.apiError(let message) {
-                await MainActor.run {
-                    self.errorMessage = message
-                    self.isLoading = false
-                }
-            } catch StockError.noDataAvailable {
-                await MainActor.run {
-                    self.errorMessage = "No data available for this symbol"
-                    self.isLoading = false
-                }
-            } catch {
-                await MainActor.run {
-                    self.errorMessage = "Error fetching stock data: \(error.localizedDescription)"
-                    self.isLoading = false
-                }
+        guard !stockSymbol.isEmpty else { return }
+        
+        isLoading = true
+        errorMessage = nil
+        dayData = []
+        monthData = []
+        newsData = []
+        
+        do {
+            let (day, month, news) = try await StockService.fetchStockData(symbol: stockSymbol.uppercased())
+            await MainActor.run {
+                self.dayData = day
+                self.monthData = month
+                self.newsData = news
+                self.isLoading = false
+            }
+        } catch StockError.apiError(let message) {
+            await MainActor.run {
+                self.errorMessage = message
+                self.isLoading = false
+            }
+        } catch StockError.noDataAvailable {
+            await MainActor.run {
+                self.errorMessage = "No data available for this symbol"
+                self.isLoading = false
+            }
+        } catch {
+            await MainActor.run {
+                self.errorMessage = "Error fetching stock data: \(error.localizedDescription)"
+                self.isLoading = false
             }
         }
     }
+}
 
 struct HomeView_Previews: PreviewProvider {
     static var previews: some View {
