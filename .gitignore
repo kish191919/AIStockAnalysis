@@ -1,2 +1,4 @@
 # API Keys
 APIKeys.plist
+Config.plist
+*.plist

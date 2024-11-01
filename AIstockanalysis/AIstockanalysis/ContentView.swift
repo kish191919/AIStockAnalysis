@@ -1,4 +1,3 @@
-// ContentView.swift
 import SwiftUI
 import CoreData
 
@@ -40,11 +39,5 @@ struct ContentView: View {
         }
         .environmentObject(stockViewModel)
         .accentColor(.blue)
-    }
-}
-
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
     }
 }
