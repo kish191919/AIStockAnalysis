@@ -1,3 +1,5 @@
+// Views/StockDetailView.swift
+
 import SwiftUI
 import Charts
 

@@ -3,12 +3,12 @@ import SwiftUI
 import CoreData
 
 struct ContentView: View {
-    @Environment(\.managedObjectContext) private var viewContext
+    @StateObject private var stockViewModel = StockViewModel()
     @State private var selectedTab = 0
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            HomeView()
+            HomeView(selectedTab: $selectedTab)
                 .tabItem {
                     Label("Home", systemImage: "house.fill")
                 }
@@ -38,6 +38,7 @@ struct ContentView: View {
                 }
                 .tag(4)
         }
+        .environmentObject(stockViewModel)
         .accentColor(.blue)
     }
 }

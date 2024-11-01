@@ -2,33 +2,26 @@
 import SwiftUI
 
 struct HomeView: View {
-    @State private var stockSymbol: String = ""
-    @State private var dayData: [StockData] = []
-    @State private var monthData: [StockData] = []
-    @State private var newsData: [StockNews] = []
-    @State private var marketSentiment: MarketSentiment = MarketSentiment(vix: 0.0, fearAndGreedIndex: 0.0)
-    @State private var isLoading = false
-    @State private var errorMessage: String?
+    @EnvironmentObject private var viewModel: StockViewModel
+    @FocusState private var isTextFieldFocused: Bool
+    @Binding var selectedTab: Int  // 추가
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
+            VStack(spacing: 0) {
                 // 검색 바
                 HStack {
-                    TextField("Enter stock symbol (e.g., AAPL)", text: $stockSymbol)
+                    TextField("Enter stock symbol (e.g., AAPL)", text: $viewModel.stockSymbol)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .autocapitalization(.allCharacters)
                         .submitLabel(.search)
+                        .focused($isTextFieldFocused)
                         .onSubmit {
-                            Task {
-                                await fetchStockData()
-                            }
+                            startSearch()
                         }
                     
                     Button(action: {
-                        Task {
-                            await fetchStockData()
-                        }
+                        startSearch()
                     }) {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(.white)
@@ -39,11 +32,11 @@ struct HomeView: View {
                 }
                 .padding()
                 
-                if isLoading {
+                if viewModel.isLoading {
                     ProgressView()
                         .scaleEffect(1.5)
                         .padding()
-                } else if let error = errorMessage {
+                } else if let error = viewModel.errorMessage {
                     VStack {
                         Image(systemName: "exclamationmark.triangle")
                             .foregroundColor(.red)
@@ -54,14 +47,6 @@ struct HomeView: View {
                             .multilineTextAlignment(.center)
                     }
                     .padding()
-                } else if !monthData.isEmpty {
-                    StockDetailView(
-                        symbol: stockSymbol,
-                        dayData: dayData,
-                        monthData: monthData,
-                        newsData: newsData,
-                        marketSentiment: marketSentiment
-                    )
                 } else {
                     VStack(spacing: 10) {
                         Image(systemName: "chart.line.uptrend.xyaxis")
@@ -70,54 +55,20 @@ struct HomeView: View {
                         Text("Enter a stock symbol to see details")
                             .foregroundColor(.gray)
                     }
+                    .frame(maxHeight: .infinity)
                 }
-                
-                Spacer()
             }
             .navigationTitle("Stock Search")
         }
     }
     
-    private func fetchStockData() async {
-        guard !stockSymbol.isEmpty else { return }
-        
-        isLoading = true
-        errorMessage = nil
-        dayData = []
-        monthData = []
-        newsData = []
-        marketSentiment = MarketSentiment(vix: 0.0, fearAndGreedIndex: 0.0)
-        
-        do {
-            let (day, month, news, sentiment) = try await StockService.fetchStockData(symbol: stockSymbol.uppercased())
-            await MainActor.run {
-                self.dayData = day
-                self.monthData = month
-                self.newsData = news
-                self.marketSentiment = sentiment
-                self.isLoading = false
-            }
-        } catch StockError.apiError(let message) {
-            await MainActor.run {
-                self.errorMessage = message
-                self.isLoading = false
-            }
-        } catch StockError.noDataAvailable {
-            await MainActor.run {
-                self.errorMessage = "No data available for this symbol"
-                self.isLoading = false
-            }
-        } catch {
-            await MainActor.run {
-                self.errorMessage = "Error fetching stock data: \(error.localizedDescription)"
-                self.isLoading = false
+    private func startSearch() {
+        isTextFieldFocused = false
+        Task {
+            await viewModel.fetchStockData()
+            if !viewModel.dayData.isEmpty {
+                selectedTab = 1  // Analysis 탭으로 전환
             }
         }
-    }
-}
-
-struct HomeView_Previews: PreviewProvider {
-    static var previews: some View {
-        HomeView()
     }
 }

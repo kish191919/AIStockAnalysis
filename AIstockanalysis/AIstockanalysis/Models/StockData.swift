@@ -1,5 +1,5 @@
-import Foundation
 
+//Models/StockData.swift
 import Foundation
 
 // MARK: - Data Models
