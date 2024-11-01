@@ -361,3 +361,39 @@ public class StockService {
         }
     }
 }
+
+extension StockService {
+    static func searchSymbol(query: String) async throws -> [(symbol: String, name: String)] {
+        let baseURL = "https://query2.finance.yahoo.com/v1/finance/search"
+        let urlString = "\(baseURL)?q=\(query)&quotesCount=10&newsCount=0&enableFuzzyQuery=false&quotesQueryId=tss_match_phrase_query"
+        
+        guard let encodedString = urlString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: encodedString) else {
+            throw StockError.invalidSymbol
+        }
+        
+        var request = URLRequest(url: url)
+        request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
+        
+        do {
+            let (data, _) = try await URLSession.shared.data(for: request)
+            
+            struct SearchResponse: Codable {
+                let quotes: [Quote]
+                
+                struct Quote: Codable {
+                    let symbol: String
+                    let shortname: String?
+                    let longname: String?
+                }
+            }
+            
+            let response = try JSONDecoder().decode(SearchResponse.self, from: data)
+            return response.quotes.map { quote in
+                (symbol: quote.symbol, name: quote.longname ?? quote.shortname ?? quote.symbol)
+            }
+        } catch {
+            throw StockError.networkError
+        }
+    }
+}
