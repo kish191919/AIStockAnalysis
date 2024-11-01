@@ -142,34 +142,37 @@ struct YahooFinanceChartView: View {
     }
     
     private var periodSelector: some View {
-        HStack(spacing: 6) {
-            Spacer() // 가운데 정렬을 위한 Spacer 추가
-            ForEach(ChartPeriod.allCases, id: \.self) { period in
-                Button(action: {
-                    selectedPeriod = period
-                    selectedPoint = nil
-                    if viewModel.chartData[period] == nil {
-                        viewModel.fetchChartData(symbol: symbol, period: period)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {  // spacing 증가
+                ForEach(ChartPeriod.allCases, id: \.self) { period in
+                    Button(action: {
+                        selectedPeriod = period
+                        selectedPoint = nil
+                        if viewModel.chartData[period] == nil {
+                            viewModel.fetchChartData(symbol: symbol, period: period)
+                        }
+                    }) {
+                        Text(period.rawValue)
+                            .font(.system(size: 16, weight: .medium))  // 폰트 크기 증가
+                            .padding(.horizontal, 12)  // 가로 패딩 증가
+                            .padding(.vertical, 8)    // 세로 패딩 증가
+                            .frame(minWidth: 60)      // 최소 너비 설정
+                            .background(
+                                selectedPeriod == period ?
+                                    Color.blue :
+                                    Color.gray.opacity(0.2)
+                            )
+                            .foregroundColor(
+                                selectedPeriod == period ?
+                                    .white :
+                                    .primary
+                            )
+                            .cornerRadius(8)          // 모서리 반경 증가
                     }
-                }) {
-                    Text(period.rawValue)
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            selectedPeriod == period ?
-                                Color.blue :
-                                Color.gray.opacity(0.2)
-                        )
-                        .foregroundColor(
-                            selectedPeriod == period ?
-                                .white :
-                                .primary
-                        )
-                        .cornerRadius(6)
                 }
             }
-            Spacer() // 가운데 정렬을 위한 Spacer 추가
+            .padding(.horizontal)
+            .padding(.vertical, 8)
         }
     }
     

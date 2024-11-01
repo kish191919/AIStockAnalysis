@@ -2,8 +2,14 @@ import SwiftUI
 import CoreData
 
 struct ContentView: View {
-    @StateObject private var stockViewModel = StockViewModel()
+    @Environment(\.managedObjectContext) private var viewContext
+    @StateObject private var stockViewModel: StockViewModel
     @State private var selectedTab = 0
+    
+    init() {
+        let context = PersistenceController.shared.container.viewContext
+        _stockViewModel = StateObject(wrappedValue: StockViewModel(context: context))
+    }
     
     var body: some View {
         TabView(selection: $selectedTab) {

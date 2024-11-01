@@ -1,10 +1,11 @@
 // AIstockanalysisApp.swift
+// AIStockAnalysisApp.swift
 import SwiftUI
 
 @main
-struct AIstockanalysisApp: App {
-    let persistenceController = PersistenceController.shared
-
+struct AIStockAnalysisApp: App {
+    @StateObject private var persistenceController = PersistenceController.shared
+    
     var body: some Scene {
         WindowGroup {
             ContentView()

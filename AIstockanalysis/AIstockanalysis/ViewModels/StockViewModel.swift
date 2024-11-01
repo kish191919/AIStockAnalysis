@@ -2,6 +2,7 @@
 // ViewModels/StockViewModel.swift
 import SwiftUI
 import Combine
+import CoreData
 
 @MainActor
 class StockViewModel: ObservableObject {
@@ -20,13 +21,12 @@ class StockViewModel: ObservableObject {
     @Published var isAnalyzing = false
     @Published var lastJSONOutput: String?
     @Published var chartViewModel: YahooChartViewModel = YahooChartViewModel()
+    @Published var currentPrice: Double = 0.0  // 추가
     @Published var selectedLanguage: AppLanguage {
         didSet {
-            // 선택된 언어를 UserDefaults에 저장
             if let encoded = try? JSONEncoder().encode(selectedLanguage) {
                 UserDefaults.standard.set(encoded, forKey: "selectedLanguage")
             }
-            // 언어가 변경되면 기존 분석 결과를 새 언어로 번역
             if let analysis = stockAnalysis {
                 Task {
                     let translatedAnalysis = await translateAnalysis(analysis)
@@ -40,9 +40,12 @@ class StockViewModel: ObservableObject {
     
     private var searchTask: Task<Void, Never>?
     private let openAIService = OpenAIService()
+    private let viewContext: NSManagedObjectContext
     
-    init() {
-        // 저장된 언어 설정을 불러오거나, 없으면 시스템 언어 또는 영어를 기본값으로 설정
+    init(context: NSManagedObjectContext) {
+        self.viewContext = context
+        
+        // 저장된 언어 설정을 불러오거나, 없으면 시스템 언어를 기본값으로 설정
         if let savedLanguageData = UserDefaults.standard.data(forKey: "selectedLanguage"),
            let savedLanguage = try? JSONDecoder().decode(AppLanguage.self, from: savedLanguageData) {
             self.selectedLanguage = savedLanguage
@@ -56,56 +59,78 @@ class StockViewModel: ObservableObject {
         }
     }
     
-    func fetchStockData() async -> Bool {
-        guard !stockSymbol.isEmpty else { return false }
-        
-        await MainActor.run {
-            isLoading = true
-            errorMessage = nil
-            dayData = []
-            monthData = []
-            newsData = []
-            marketSentiment = MarketSentiment(vix: 0.0, fearAndGreedIndex: 0.0)
-            lastJSONOutput = nil
-        }
+    private func saveAnalysisToHistory(_ analysis: StockAnalysis, currentPrice: Double) {
+        let historyItem = AnalysisHistoryEntity(context: viewContext)
+        historyItem.id = UUID()
+        historyItem.symbol = stockSymbol
+        historyItem.timestamp = Date()
+        historyItem.decision = analysis.decision.rawValue
+        historyItem.confidence = Int16(analysis.percentage)
+        historyItem.currentPrice = currentPrice
+        historyItem.expectedPrice = analysis.expectedNextDayPrice
+        historyItem.reason = analysis.reason
+        historyItem.language = selectedLanguage.code
         
         do {
-            let (day, month, news, sentiment) = try await StockService.fetchStockData(symbol: stockSymbol.uppercased())
-            
-            await MainActor.run {
-                self.dayData = day
-                self.monthData = month
-                self.newsData = news
-                self.marketSentiment = sentiment
-                self.isLoading = false
-                self.addToFavorites(self.stockSymbol.uppercased())
-                
-                // 차트 데이터 로드
-                self.chartViewModel.fetchChartData(symbol: self.stockSymbol, period: .oneDay)
-            }
-            
-            // createJSONOutput 호출 부분 수정
-            Task {
-                if let jsonData = createJSONOutput(day: day, month: month, news: news, sentiment: sentiment) {
-                    await MainActor.run {
-                        self.lastJSONOutput = jsonData
-                    }
-                    await analyzeWithOpenAI(jsonData: jsonData)
-                }
-            }
-            
-            return true
-            
+            try viewContext.save()
         } catch {
-            await MainActor.run {
-                self.isLoading = false
-                self.errorMessage = error.localizedDescription
-                self.showAlert = true
-            }
-            return false
+            print("Error saving analysis history: \(error)")
         }
     }
     
+    func fetchStockData() async -> Bool {
+            guard !stockSymbol.isEmpty else { return false }
+            
+            await MainActor.run {
+                isLoading = true
+                errorMessage = nil
+                dayData = []
+                monthData = []
+                newsData = []
+                marketSentiment = MarketSentiment(vix: 0.0, fearAndGreedIndex: 0.0)
+                lastJSONOutput = nil
+                currentPrice = 0.0  // 초기화
+            }
+            
+            do {
+                let (day, month, news, sentiment) = try await StockService.fetchStockData(symbol: stockSymbol.uppercased())
+                
+                await MainActor.run {
+                    self.dayData = day
+                    self.monthData = month
+                    self.newsData = news
+                    self.marketSentiment = sentiment
+                    self.isLoading = false
+                    self.addToFavorites(self.stockSymbol.uppercased())
+                    
+                    // 현재 가격 설정
+                    if let latestPrice = day.first?.close {
+                        self.currentPrice = latestPrice
+                    }
+                    
+                    self.chartViewModel.fetchChartData(symbol: self.stockSymbol, period: .oneDay)
+                }
+                
+                Task {
+                    if let jsonData = createJSONOutput(day: day, month: month, news: news, sentiment: sentiment) {
+                        await MainActor.run {
+                            self.lastJSONOutput = jsonData
+                        }
+                        await analyzeWithOpenAI(jsonData: jsonData)
+                    }
+                }
+                
+                return true
+                
+            } catch {
+                await MainActor.run {
+                    self.isLoading = false
+                    self.errorMessage = error.localizedDescription
+                    self.showAlert = true
+                }
+                return false
+            }
+        }
     
     func translateAnalysis(_ analysis: StockAnalysis) async -> StockAnalysis {
         guard selectedLanguage.code != "en" else { return analysis }
@@ -128,11 +153,9 @@ class StockViewModel: ObservableObject {
             
             let translatedResponse = try await openAIService.getTranslation(prompt: translationPrompt)
             
-            // 번역된 응답에서 결정과 이유 추출
             var translatedDecision = analysis.decision
             var translatedReason = analysis.reason
             
-            // 번역된 텍스트에서 결정과 이유 파싱
             if let decisionRange = translatedResponse.range(of: "Decision:") ??
                                  translatedResponse.range(of: "결정:") ??
                                  translatedResponse.range(of: "決定:") {
@@ -164,7 +187,6 @@ class StockViewModel: ObservableObject {
     }
     
     private func mapTranslatedDecision(_ decision: String) -> StockAnalysis.Decision {
-        // 다양한 언어의 강세/약세/중립 표현을 매핑
         let bullishTerms = ["BULLISH", "강세", "強気", "强势", "強勢", "ALCISTA", "HAUSSIER", "BULLENMARKT", "RIALZISTA", "БЫЧИЙ"]
         let bearishTerms = ["BEARISH", "약세", "弱気", "弱势", "弱勢", "BAJISTA", "BAISSIER", "BÄRENMARKT", "RIBASSISTA", "МЕДВЕЖИЙ"]
         let neutralTerms = ["NEUTRAL", "중립", "中立", "中性", "NEUTRO", "NEUTRE", "NEUTRAL", "NEUTRALE", "НЕЙТРАЛЬНЫЙ"]
@@ -180,7 +202,6 @@ class StockViewModel: ObservableObject {
         }
     }
     
-    @MainActor
     func searchSymbol(query: String) {
         searchTask?.cancel()
         
@@ -205,9 +226,14 @@ class StockViewModel: ObservableObject {
         }
     }
     
-    @MainActor
+    // StockViewModel.swift에서 addToFavorites 메서드 수정
     func addToFavorites(_ symbol: String) {
-        if !dayData.isEmpty && !favorites.contains(symbol) {
+        if !dayData.isEmpty {
+            // 이미 있는 경우 제거
+            if let index = favorites.firstIndex(of: symbol) {
+                favorites.remove(at: index)
+            }
+            // 최신 위치에 추가
             if favorites.count >= 10 {
                 favorites.removeLast()
             }
@@ -216,7 +242,6 @@ class StockViewModel: ObservableObject {
         }
     }
     
-    @MainActor
     func removeFromFavorites(_ symbol: String) {
         if let index = favorites.firstIndex(of: symbol) {
             favorites.remove(at: index)
@@ -275,13 +300,14 @@ class StockViewModel: ObservableObject {
             print("📤 Sending data to OpenAI: \(jsonData)")
             
             let analysis = try await openAIService.analyzeStock(jsonData: jsonData)
-            
-            // 선택된 언어로 번역
             let translatedAnalysis = await translateAnalysis(analysis)
             
             await MainActor.run {
                 self.stockAnalysis = translatedAnalysis
                 self.isAnalyzing = false
+                if let currentPrice = self.dayData.first?.close {
+                    self.saveAnalysisToHistory(translatedAnalysis, currentPrice: currentPrice)
+                }
             }
         } catch {
             print("❌ OpenAI Analysis error: \(error.localizedDescription)")
@@ -294,4 +320,15 @@ class StockViewModel: ObservableObject {
     private func saveFavorites() {
         UserDefaults.standard.set(favorites, forKey: "favorites")
     }
+    
+    func deleteHistoryItem(_ item: AnalysisHistoryEntity) {
+        viewContext.delete(item)
+        do {
+            try viewContext.save()
+        } catch {
+            print("Error deleting history item: \(error)")
+        }
+    }
 }
+
+

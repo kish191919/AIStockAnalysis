@@ -110,7 +110,6 @@ public enum ChartPeriod: String, CaseIterable {
     case sixMonth = "6M"
     case yearToDate = "YTD"
     case oneYear = "1Y"
-    case twoYear = "2Y"
     case fiveYear = "5Y"
     case max = "MAX"
     
@@ -122,7 +121,6 @@ public enum ChartPeriod: String, CaseIterable {
         case .sixMonth: return "1d"
         case .yearToDate: return "1d"
         case .oneYear: return "1d"
-        case .twoYear: return "1wk"
         case .fiveYear: return "1wk"
         case .max: return "1mo"
         }
@@ -136,7 +134,6 @@ public enum ChartPeriod: String, CaseIterable {
         case .sixMonth: return "6mo"
         case .yearToDate: return "ytd"
         case .oneYear: return "1y"
-        case .twoYear: return "2y"
         case .fiveYear: return "5y"
         case .max: return "max"
         }

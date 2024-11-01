@@ -33,9 +33,9 @@ struct AnalysisView: View {
             }
             .onTapGesture {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
-                                             to: nil,
-                                             from: nil,
-                                             for: nil)
+                                                to: nil,
+                                                from: nil,
+                                                for: nil)
                 showSuggestions = false
             }
             .sheet(isPresented: $showLanguageSheet) {
@@ -176,20 +176,37 @@ struct AnalysisView: View {
     }
     
     private var recentSearchesSection: some View {
-        Group {
-            if !viewModel.favorites.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(viewModel.favorites, id: \.self) { symbol in
-                            recentSearchItem(symbol)
-                        }
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                let filteredFavorites = viewModel.favorites.filter { $0 != viewModel.stockSymbol }
+                if !filteredFavorites.isEmpty {
+                    ForEach(filteredFavorites, id: \.self) { symbol in
+                        Text(symbol)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(15)
+                            .foregroundColor(.primary)
+                            .onTapGesture {
+                                viewModel.stockSymbol = symbol
+                            }
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    symbolToDelete = symbol
+                                    showDeleteConfirmation = true
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                     }
-                    .padding(.horizontal)
                 }
             }
+            .padding(.horizontal)
         }
+        .frame(height: 40)
     }
     
+    // AnalysisView.swift의 mainContentSection 수정
     private var mainContentSection: some View {
         Group {
             if viewModel.isLoading {
@@ -197,7 +214,7 @@ struct AnalysisView: View {
                     .scaleEffect(1.5)
                     .padding()
             } else if !viewModel.stockSymbol.isEmpty && !viewModel.dayData.isEmpty {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 20) {  // spacing을 20으로 증가
                     stockInfoHeader
                     stockChartSection
                     analysisSection
@@ -207,17 +224,16 @@ struct AnalysisView: View {
             }
         }
     }
-    
+
     private var stockInfoHeader: some View {
         HStack {
             Text(viewModel.stockSymbol)
                 .font(.title)
                 .bold()
             
-            Text("$\(String(format: "%.2f", currentPrice))")
+            Text("$\(String(format: "%.2f", viewModel.currentPrice))")
                 .font(.title2)
                 .foregroundColor(.secondary)
-                .animation(.easeInOut(duration: 0.2), value: currentPrice)
             
             Spacer()
         }
@@ -391,15 +407,16 @@ struct AnalysisView: View {
         }
     }
     
+    // recentSearchItem 메서드 수정
     private func recentSearchItem(_ symbol: String) -> some View {
-        Text(symbol)
+        return Text(symbol)  // return 명시적 추가
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(Color.gray.opacity(0.1))
             .cornerRadius(15)
             .foregroundColor(.primary)
             .onTapGesture {
-                viewModel.stockSymbol = symbol  // 검색창에 심볼만 입력
+                viewModel.stockSymbol = symbol
             }
             .contextMenu {
                 Button(role: .destructive) {
@@ -409,47 +426,48 @@ struct AnalysisView: View {
                     Label("Delete", systemImage: "trash")
                 }
             }
+        
     }
-}
-
-// MARK: - Support Views
-
-struct SentimentCard: View {
-    let title: String
-    let value: Double
     
-    var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(title)
-                .font(.subheadline)
-                .foregroundColor(.gray)
-            Text(String(format: "%.2f", value))
-                .font(.headline)
-        }
-        .padding()
-        .background(Color.gray.opacity(0.1))
-        .cornerRadius(8)
-    }
-}
-
-struct NewsCard: View {
-    let news: StockNews
+    // MARK: - Support Views
     
-    var body: some View {
-        Link(destination: URL(string: news.link) ?? URL(string: "https://finance.yahoo.com")!) {
+    struct SentimentCard: View {
+        let title: String
+        let value: Double
+        
+        var body: some View {
             VStack(alignment: .leading, spacing: 5) {
-                Text(news.title)
+                Text(title)
                     .font(.subheadline)
-                    .lineLimit(2)
-                    .foregroundColor(.primary)
-                Text(news.pubDate)
-                    .font(.caption)
                     .foregroundColor(.gray)
+                Text(String(format: "%.2f", value))
+                    .font(.headline)
             }
             .padding()
-            .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.gray.opacity(0.1))
             .cornerRadius(8)
+        }
+    }
+    
+    struct NewsCard: View {
+        let news: StockNews
+        
+        var body: some View {
+            Link(destination: URL(string: news.link) ?? URL(string: "https://finance.yahoo.com")!) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(news.title)
+                        .font(.subheadline)
+                        .lineLimit(2)
+                        .foregroundColor(.primary)
+                    Text(news.pubDate)
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(8)
+            }
         }
     }
 }
