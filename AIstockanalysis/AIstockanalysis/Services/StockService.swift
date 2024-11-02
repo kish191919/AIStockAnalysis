@@ -3,16 +3,16 @@
 import Foundation
 
 public class StockService {
-    public static func fetchStockData(symbol: String) async throws -> (dayData: [StockData], monthData: [StockData], newsData: [StockNews], marketSentiment: MarketSentiment) {
+    public static func fetchStockData(symbol: String) async throws -> (dayData: [StockData], monthData: [StockData], newsData: [StockNews], marketSentiment: MarketSentiment, jsonOutput: String?) {
         print("\n🔍 Fetching data from Yahoo Finance for \(symbol)")
         let (extendedData, monthData) = try await fetchAllData(symbol: symbol)
         let newsData = try await fetchNewsData(symbol: symbol)
         let sentiment = try await fetchMarketSentiment()
         
         // 최적화된 JSON 출력
-        printOptimizedJSONOutput(extendedData, monthData, newsData, sentiment)
+        let jsonOutput = printOptimizedJSONOutput(extendedData, monthData, newsData, sentiment)
         
-        return (extendedData, monthData, newsData, sentiment)
+        return (extendedData, monthData, newsData, sentiment, jsonOutput)
     }
     
     private static func fetchAllData(symbol: String) async throws -> (dayData: [StockData], monthData: [StockData]) {
@@ -250,80 +250,62 @@ public class StockService {
         return stockDataArray
     }
     
-    private static func createCompactJSONOutput(dailyData: [StockData], monthlyData: [StockData], newsData: [StockNews], marketSentiment: MarketSentiment) -> [String: Any] {
-            // 일간 데이터 변환
-            let dailyValues = dailyData.map { data -> [Any] in
-                return [
-                    formatDateWithMinutes(data.date),
-                    formatPrice4(data.open),
-                    formatPrice4(data.close),
-                    formatPrice4(data.high),
-                    formatPrice4(data.low),
-                    data.volume
-                ]
-            }
-            
-            // 월간 데이터 변환
-            let monthlyValues = monthlyData.map { data -> [Any] in
-                return [
-                    formatDateOnly(data.date),
-                    formatPrice4(data.open),
-                    formatPrice4(data.close),
-                    formatPrice4(data.high),
-                    formatPrice4(data.low),
-                    data.volume
-                ]
-            }
-            
-            // 뉴스 데이터
-            let newsItems = newsData.map { ["t": $0.title] }
-            
-            // 최종 JSON 구조
-            return [
-                "c": ["d","o","c","h","l","v"],
-                "p": formatPrice2(dailyData.first?.close ?? 0.0),
-                "d": [
-                    "d": dailyValues,
-                    "m": monthlyValues
-                ],
-                "n": newsItems,
-                "Mkt Sentiment": [
-                    "VIX": formatPrice2(marketSentiment.vix),
-                    "F&G": formatPrice2(marketSentiment.fearAndGreedIndex)
-                ]
-            ]
-        }
-    private static func formatPrice4(_ price: Double) -> String {
-            // 소수점 4자리까지 버림 후 문자열로 변환
-            let truncated = floor(price * 10000) / 10000
-            return String(format: "%.4f", truncated)
-        }
-        
-    private static func formatPrice2(_ price: Double) -> String {
-            // 소수점 2자리까지 버림 후 문자열로 변환
-            let truncated = floor(price * 100) / 100
-            return String(format: "%.2f", truncated)
-        }
-    
-    private static func printOptimizedJSONOutput(_ dailyData: [StockData], _ monthlyData: [StockData], _ newsData: [StockNews], _ marketSentiment: MarketSentiment) {
-            do {
-                let compactData = createCompactJSONOutput(
-                    dailyData: dailyData,
-                    monthlyData: monthlyData,
-                    newsData: newsData,
-                    marketSentiment: marketSentiment
-                )
-                
-                // JSONSerialization 옵션 수정
-                let jsonData = try JSONSerialization.data(withJSONObject: compactData, options: [])
-                if let jsonString = String(data: jsonData, encoding: .utf8) {
-                    print("\n📊 Compact JSON Output:")
-                    print(jsonString)
+    private static func createCompactJSONOutput(dailyData: [StockData], monthlyData: [StockData], newsData: [StockNews], marketSentiment: MarketSentiment) -> String? {
+        // 명시적으로 [String: Any] 타입을 지정
+        let compactData: [String: Any] = [
+            "c": ["d","o","c","h","l","v"],
+            "p": formatPrice2(dailyData.first?.close ?? 0.0),
+            "d": [
+                "d": dailyData.map { data -> [Any] in
+                    return [
+                        formatDateWithMinutes(data.date),
+                        formatPrice4(data.open),
+                        formatPrice4(data.close),
+                        formatPrice4(data.high),
+                        formatPrice4(data.low),
+                        data.volume
+                    ]
+                },
+                "m": monthlyData.map { data -> [Any] in
+                    return [
+                        formatDateOnly(data.date),
+                        formatPrice4(data.open),
+                        formatPrice4(data.close),
+                        formatPrice4(data.high),
+                        formatPrice4(data.low),
+                        data.volume
+                    ]
                 }
-            } catch {
-                print("Error converting to JSON: \(error)")
-            }
+            ] as [String: Any],  // 내부 딕셔너리도 타입 명시
+            "n": newsData.map { ["t": $0.title] },
+            "Mkt Sentiment": [
+                "VIX": formatPrice2(marketSentiment.vix),
+                "F&G": formatPrice2(marketSentiment.fearAndGreedIndex)
+            ]
+        ]
+        
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: compactData, options: [])
+            return String(data: jsonData, encoding: .utf8)
+        } catch {
+            print("Error converting to JSON: \(error)")
+            return nil
         }
+    }
+    
+    private static func printOptimizedJSONOutput(_ dailyData: [StockData], _ monthlyData: [StockData], _ newsData: [StockNews], _ marketSentiment: MarketSentiment) -> String? {
+        if let jsonString = createCompactJSONOutput(
+            dailyData: dailyData,
+            monthlyData: monthlyData,
+            newsData: newsData,
+            marketSentiment: marketSentiment
+        ) {
+            print("\n📊 Compact JSON Output:")
+            print(jsonString)
+            return jsonString
+        }
+        return nil
+    }
     
     public static func formatDateWithMinutes(_ date: Date) -> String {
         let formatter = DateFormatter()
@@ -341,8 +323,12 @@ public class StockService {
         return floor(price * 10000) / 10000
     }
     
-    private static func formatCurrentPrice(_ price: Double) -> Double {
-        return floor(price * 100) / 100
+    private static func formatPrice4(_ price: Double) -> String {
+        return String(format: "%.4f", floor(price * 10000) / 10000)
+    }
+    
+    private static func formatPrice2(_ price: Double) -> String {
+        return String(format: "%.2f", floor(price * 100) / 100)
     }
     
     private static func formatNewsDate(_ date: Date) -> String {
@@ -389,11 +375,51 @@ extension StockService {
             }
             
             let response = try JSONDecoder().decode(SearchResponse.self, from: data)
-            return response.quotes.map { quote in
-                (symbol: quote.symbol, name: quote.longname ?? quote.shortname ?? quote.symbol)
+                        return response.quotes.map { quote in
+                            (symbol: quote.symbol, name: quote.longname ?? quote.shortname ?? quote.symbol)
+                        }
+                    } catch {
+                        throw StockError.networkError
+                    }
+                }
             }
-        } catch {
-            throw StockError.networkError
-        }
-    }
-}
+
+            // MARK: - Error Types
+            public enum StockError: LocalizedError {
+                case invalidResponse
+                case apiError(String)
+                case noDataAvailable
+                case invalidSymbol
+                case networkError
+                
+                public var errorDescription: String? {
+                    switch self {
+                    case .invalidResponse:
+                        return "Invalid response from server"
+                    case .apiError(let message):
+                        return message
+                    case .noDataAvailable:
+                        return "No data available for this stock"
+                    case .invalidSymbol:
+                        return "Invalid stock symbol"
+                    case .networkError:
+                        return "Network connection error"
+                    }
+                }
+            }
+
+            // MARK: - Data Models
+            public struct StockNews: Codable {
+                let title: String
+                let pubDate: String
+                let link: String
+            }
+
+            public struct SimpleNewsTitle: Codable {
+                let title: String
+            }
+
+            public struct MarketSentiment: Codable {
+                let vix: Double
+                let fearAndGreedIndex: Double
+            }
