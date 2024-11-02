@@ -20,7 +20,8 @@ public class StockService {
         let threeDaysAgo = Int((Calendar.current.date(byAdding: .day, value: -3, to: Date()) ?? Date()).timeIntervalSince1970)
         
         let baseURL = "https://query2.finance.yahoo.com/v8/finance/chart/"
-        let urlString = "\(baseURL)\(symbol)?period1=\(threeDaysAgo)&period2=\(now)&interval=15m"
+        // 장 마감 후 데이터를 포함하도록 includePrePost=true 추가
+        let urlString = "\(baseURL)\(symbol)?period1=\(threeDaysAgo)&period2=\(now)&interval=15m&includePrePost=true"
         
         print("🌐 Requesting URL: \(urlString)")
         
@@ -54,8 +55,16 @@ public class StockService {
                 throw StockError.invalidResponse
             }
             
+            // 현재 시장 상태와 정규장/장외시장 가격 정보 확인
+            let meta = result.meta
+            print("📊 Market State: \(meta.marketState ?? "Unknown")")
+            print("Regular Market Price: \(meta.regularMarketPrice ?? 0.0)")
+            print("Post Market Price: \(meta.postMarketPrice ?? 0.0)")
+            print("Pre Market Price: \(meta.preMarketPrice ?? 0.0)")
+            
             let timestamps = result.timestamp
             let quotes = result.indicators.quote.first
+            let adjclose = result.indicators.adjclose?.first?.adjclose
             
             guard let quotes = quotes else {
                 throw StockError.noDataAvailable
@@ -81,6 +90,36 @@ public class StockService {
                     )
                     stockDataArray.append(stockData)
                 }
+            }
+            
+            // 장 마감 후 데이터가 있는 경우 추가
+            if let postMarketPrice = meta.postMarketPrice,
+               let postMarketTime = meta.postMarketTime,
+               meta.marketState == "POST" {
+                let postMarketData = StockData(
+                    date: Date(timeIntervalSince1970: TimeInterval(postMarketTime)),
+                    open: postMarketPrice,
+                    high: postMarketPrice,
+                    low: postMarketPrice,
+                    close: postMarketPrice,
+                    volume: 0  // 장외 거래량은 일반적으로 제공되지 않음
+                )
+                stockDataArray.append(postMarketData)
+            }
+            
+            // 장 시작 전 데이터가 있는 경우 추가
+            if let preMarketPrice = meta.preMarketPrice,
+               let preMarketTime = meta.preMarketTime,
+               meta.marketState == "PRE" {
+                let preMarketData = StockData(
+                    date: Date(timeIntervalSince1970: TimeInterval(preMarketTime)),
+                    open: preMarketPrice,
+                    high: preMarketPrice,
+                    low: preMarketPrice,
+                    close: preMarketPrice,
+                    volume: 0  // 장외 거래량은 일반적으로 제공되지 않음
+                )
+                stockDataArray.append(preMarketData)
             }
             
             stockDataArray.sort { $0.date > $1.date }

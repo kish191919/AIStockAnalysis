@@ -98,10 +98,16 @@ public struct YahooFinanceResponse: Codable {
                 public let symbol: String
                 public let regularMarketPrice: Double?
                 public let previousClose: Double?
+                public let marketState: String?  // PRE, REGULAR, POST 등의 시장 상태
+                public let postMarketPrice: Double?  // 장 마감 후 가격
+                public let postMarketTime: Int?     // 장 마감 후 시간
+                public let preMarketPrice: Double?   // 장 시작 전 가격
+                public let preMarketTime: Int?      // 장 시작 전 시간
             }
             
             public struct Indicators: Codable {
                 public let quote: [Quote]
+                public let adjclose: [AdjClose]?
                 
                 public struct Quote: Codable {
                     public let open: [Double?]
@@ -109,6 +115,10 @@ public struct YahooFinanceResponse: Codable {
                     public let low: [Double?]
                     public let close: [Double?]
                     public let volume: [Int?]
+                }
+                
+                public struct AdjClose: Codable {
+                    public let adjclose: [Double?]
                 }
             }
         }

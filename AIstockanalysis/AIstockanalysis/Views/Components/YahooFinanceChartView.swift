@@ -25,10 +25,10 @@ struct YahooFinanceChartView: View {
                     loadingView
                 } else if let error = viewModel.error {
                     errorView(error)
-                } else if let data = viewModel.chartData[selectedPeriod], !data.isEmpty {  // !data.isEmpty 조건 추가
+                } else if let data = viewModel.chartData[selectedPeriod], !data.isEmpty {
                     chartContent(data)
                 } else {
-                    ProgressView()  // 데이터 로딩 중일 때는 ProgressView 표시
+                    ProgressView()
                         .onAppear {
                             viewModel.fetchChartData(symbol: symbol, period: selectedPeriod)
                         }
@@ -36,7 +36,7 @@ struct YahooFinanceChartView: View {
             }
             .frame(height: 250)
             .background(Color(.systemBackground))
-            .padding(.horizontal, 12) // 차트 영역의 좌우 패딩 조정
+            .padding(.horizontal, 12)
             .padding(.bottom, 16)
             
             // 구분선
@@ -50,6 +50,7 @@ struct YahooFinanceChartView: View {
             }
         }
     }
+    
     private var loadingView: some View {
         ProgressView()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -78,7 +79,7 @@ struct YahooFinanceChartView: View {
                         x: .value("Time", point.timestamp),
                         y: .value("Price", point.close)
                     )
-                    .foregroundStyle(Color.blue)
+                    .foregroundStyle(lineColor(for: point.sessionType))
                     
                     AreaMark(
                         x: .value("Time", point.timestamp),
@@ -86,7 +87,7 @@ struct YahooFinanceChartView: View {
                     )
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [.blue.opacity(0.3), .clear],
+                            colors: [lineColor(for: point.sessionType).opacity(0.3), .clear],
                             startPoint: .top,
                             endPoint: .bottom
                         )
@@ -101,17 +102,17 @@ struct YahooFinanceChartView: View {
                         x: .value("Time", selectedPoint.timestamp),
                         y: .value("Price", selectedPoint.close)
                     )
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(lineColor(for: selectedPoint.sessionType))
                     .symbolSize(100)
                 }
             }
             .chartYScale(domain: calculateYAxisRange(data: validData))
-            .chartXAxis(.hidden) // X축 숨기기
+            .chartXAxis(.hidden)
             .chartYAxis {
                 AxisMarks(position: .leading) { value in
                     if let price = value.as(Double.self) {
                         AxisValueLabel {
-                            Text("\(Int(price))")  // 정수로 표시
+                            Text("\(Int(price))")
                                 .font(.caption2)
                         }
                     }
@@ -143,7 +144,7 @@ struct YahooFinanceChartView: View {
     
     private var periodSelector: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {  // spacing 증가
+            HStack(spacing: 10) {
                 ForEach(ChartPeriod.allCases, id: \.self) { period in
                     Button(action: {
                         selectedPeriod = period
@@ -153,10 +154,10 @@ struct YahooFinanceChartView: View {
                         }
                     }) {
                         Text(period.rawValue)
-                            .font(.system(size: 16, weight: .medium))  // 폰트 크기 증가
-                            .padding(.horizontal, 12)  // 가로 패딩 증가
-                            .padding(.vertical, 8)    // 세로 패딩 증가
-                            .frame(minWidth: 60)      // 최소 너비 설정
+                            .font(.system(size: 16, weight: .medium))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .frame(minWidth: 60)
                             .background(
                                 selectedPeriod == period ?
                                     Color.blue :
@@ -167,12 +168,23 @@ struct YahooFinanceChartView: View {
                                     .white :
                                     .primary
                             )
-                            .cornerRadius(8)          // 모서리 반경 증가
+                            .cornerRadius(8)
                     }
                 }
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
+        }
+    }
+    
+    private func lineColor(for sessionType: YahooChartDataPoint.SessionType) -> Color {
+        switch sessionType {
+        case .preMarket:
+            return .orange
+        case .regular:
+            return .blue
+        case .postMarket:
+            return .purple
         }
     }
     
@@ -183,11 +195,25 @@ struct YahooFinanceChartView: View {
             Text("$\(formatPrice(point.close))")
                 .font(.caption)
                 .bold()
+            Text(sessionTypeText(for: point.sessionType))
+                .font(.caption2)
+                .foregroundColor(lineColor(for: point.sessionType))
         }
         .padding(6)
         .background(Color(.systemBackground))
         .cornerRadius(6)
         .shadow(radius: 2)
+    }
+    
+    private func sessionTypeText(for sessionType: YahooChartDataPoint.SessionType) -> String {
+        switch sessionType {
+        case .preMarket:
+            return "Pre-Market"
+        case .regular:
+            return "Regular"
+        case .postMarket:
+            return "After Hours"
+        }
     }
     
     private func handleChartInteraction(_ value: DragGesture.Value, in geometry: GeometryProxy, data: [YahooChartDataPoint]) {
