@@ -224,28 +224,33 @@ struct AnalysisView: View {
             }
         }
     }
-
-    private var stockInfoHeader: some View {
-        HStack {
-            Text(viewModel.stockSymbol)
-                .font(.title)
-                .bold()
-            
-            Text("$\(String(format: "%.2f", viewModel.currentPrice))")
-                .font(.title2)
-                .foregroundColor(.secondary)
-            
-            Spacer()
-        }
-        .padding(.horizontal)
-    }
     
-    // AnalysisView의 stockChartSection 수정
     private var stockChartSection: some View {
-        YahooFinanceChartView(symbol: viewModel.stockSymbol, currentPrice: $currentPrice)
+            YahooFinanceChartView(
+                symbol: viewModel.stockSymbol,
+                currentPrice: Binding(
+                    get: { viewModel.currentPrice },
+                    set: { viewModel.currentPrice = $0 }
+                )
+            )
             .frame(height: 300)
-            .padding(.horizontal, -4) // 패딩 값을 줄임
-    }
+            .padding(.horizontal, -4)
+        }
+        
+        private var stockInfoHeader: some View {
+            HStack {
+                Text(viewModel.stockSymbol)
+                    .font(.title)
+                    .bold()
+                
+                Text("$\(String(format: "%.2f", viewModel.currentPrice))")
+                    .font(.title2)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+            }
+            .padding(.horizontal)
+        }
     
     private var analysisSection: some View {
         Group {

@@ -70,9 +70,9 @@ struct YahooFinanceChartView: View {
     }
     
     private func chartContent(_ data: [YahooChartDataPoint]) -> some View {
-        let validData = data.filter { $0.close > 0 }
-        
-        return ZStack(alignment: .topLeading) {
+            let validData = data.filter { $0.close > 0 }
+            
+            return ZStack(alignment: .topLeading) {
             Chart {
                 ForEach(validData) { point in
                     LineMark(
@@ -127,20 +127,43 @@ struct YahooFinanceChartView: View {
                     .offset(y: 20)
             }
             
-            // Gesture overlay
-            GeometryReader { geometry in
-                Color.clear
-                    .contentShape(Rectangle())
-                    .gesture(
-                        DragGesture(minimumDistance: 0)
-                            .onChanged { value in
-                                handleChartInteraction(value, in: geometry, data: validData)
+                // Gesture overlay
+                            GeometryReader { geometry in
+                                Color.clear
+                                    .contentShape(Rectangle())
+                                    .gesture(
+                                        DragGesture(minimumDistance: 0)
+                                            .onChanged { value in
+                                                handleChartInteraction(value, in: geometry, data: validData)
+                                            }
+                                            .onEnded { _ in
+                                                // 드래그가 끝나도 선택된 포인트 유지
+                                                if let point = selectedPoint {
+                                                    currentPrice = point.close
+                                                }
+                                            }
+                                    )
+                                    .onTapGesture { location in
+                                        handleChartTap(location, in: geometry, data: validData)
+                                    }
                             }
-                    )
-            }
-        }
-        .clipped()
-    }
+                        }
+                        .clipped()
+                    }
+                    
+                    private func handleChartTap(_ location: CGPoint, in geometry: GeometryProxy, data: [YahooChartDataPoint]) {
+                        guard !data.isEmpty else { return }
+                        
+                        let xPosition = location.x
+                        let totalWidth = geometry.size.width
+                        let index = Int((xPosition / totalWidth) * CGFloat(data.count))
+                        let clampedIndex = min(max(0, index), data.count - 1)
+                        
+                        selectedPoint = data[clampedIndex]
+                        if let point = selectedPoint {
+                            currentPrice = point.close
+                        }
+                    }
     
     private var periodSelector: some View {
         ScrollView(.horizontal, showsIndicators: false) {

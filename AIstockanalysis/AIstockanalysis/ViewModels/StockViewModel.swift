@@ -104,18 +104,22 @@ class StockViewModel: ObservableObject {
                 self.isLoading = false
                 self.addToFavorites(self.stockSymbol.uppercased())
                 
-                if let latestPrice = day.first?.close {
-                    self.currentPrice = latestPrice
+                // 현재 가격 설정 (장외 시간 포함)
+                if let currentPrice = getCurrentPrice(day) {
+                    self.currentPrice = currentPrice
                 }
                 
                 self.chartViewModel.fetchChartData(symbol: self.stockSymbol, period: .oneDay)
             }
             
+            // OpenAI 분석을 별도의 Task로 실행
             if let jsonOutput = jsonOutput {
-                await MainActor.run {
-                    self.lastJSONOutput = jsonOutput
+                Task {
+                    await MainActor.run {
+                        self.lastJSONOutput = jsonOutput
+                    }
+                    await analyzeWithOpenAI(jsonData: jsonOutput)
                 }
-                await analyzeWithOpenAI(jsonData: jsonOutput)
             }
             
             return true
@@ -129,6 +133,26 @@ class StockViewModel: ObservableObject {
             return false
         }
     }
+
+    // 현재 가격을 가져오는 helper 메서드
+    private func getCurrentPrice(_ dayData: [StockData]) -> Double? {
+        // chartViewModel의 데이터에서 현재 시장 상태와 가격 확인
+        if let chartResult = chartViewModel.chartData[.oneDay],
+           let firstPoint = chartResult.first {
+            switch firstPoint.sessionType {
+            case .postMarket:
+                return firstPoint.close
+            case .preMarket:
+                return firstPoint.close
+            case .regular:
+                return firstPoint.close
+            }
+        }
+        
+        // 차트 데이터가 없는 경우 일일 데이터의 최신 종가 사용
+        return dayData.first?.close
+    }
+    
     
     func translateAnalysis(_ analysis: StockAnalysis) async -> StockAnalysis {
         guard selectedLanguage.code != "en" else { return analysis }

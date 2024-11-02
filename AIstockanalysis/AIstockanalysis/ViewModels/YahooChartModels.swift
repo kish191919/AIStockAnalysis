@@ -1,4 +1,4 @@
-//
+
 //  ViewModelsYahooChartModels.swift
 
 import SwiftUI
