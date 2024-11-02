@@ -76,7 +76,7 @@ struct AnalysisView: View {
                     .autocapitalization(.none)
                     .submitLabel(.search)
                     .focused($isTextFieldFocused)
-                    .onChange(of: viewModel.stockSymbol) { oldValue, newValue in  // 수정된 부분
+                    .onChange(of: viewModel.stockSymbol) { oldValue, newValue in
                         handleSearchTextChange(newValue)
                     }
                     .onSubmit {
@@ -226,31 +226,31 @@ struct AnalysisView: View {
     }
     
     private var stockChartSection: some View {
-            YahooFinanceChartView(
-                symbol: viewModel.stockSymbol,
-                currentPrice: Binding(
-                    get: { viewModel.currentPrice },
-                    set: { viewModel.currentPrice = $0 }
-                )
+        YahooFinanceChartView(
+            symbol: viewModel.stockSymbol,
+            currentPrice: Binding(
+                get: { viewModel.currentPrice },
+                set: { viewModel.currentPrice = $0 }
             )
-            .frame(height: 300)
-            .padding(.horizontal, -4)
+        )
+        .frame(height: 300)
+        .padding(.horizontal, -4)
+    }
+    
+    private var stockInfoHeader: some View {
+        HStack {
+            Text(viewModel.stockSymbol)
+                .font(.title)
+                .bold()
+            
+            Text("$\(String(format: "%.2f", viewModel.currentPrice))")
+                .font(.title2)
+                .foregroundColor(.secondary)
+            
+            Spacer()
         }
-        
-        private var stockInfoHeader: some View {
-            HStack {
-                Text(viewModel.stockSymbol)
-                    .font(.title)
-                    .bold()
-                
-                Text("$\(String(format: "%.2f", viewModel.currentPrice))")
-                    .font(.title2)
-                    .foregroundColor(.secondary)
-                
-                Spacer()
-            }
-            .padding(.horizontal)
-        }
+        .padding(.horizontal)
+    }
     
     private var analysisSection: some View {
         Group {
@@ -273,41 +273,117 @@ struct AnalysisView: View {
     }
     
     private var marketSentimentSection: some View {
-        VStack(spacing: 10) {
-            Text("Market Sentiment")
-                .font(.headline)
-                .padding(.top)
-            
-            HStack {
-                SentimentCard(title: "VIX", value: viewModel.marketSentiment.vix)
-                SentimentCard(title: "F&G Index", value: viewModel.marketSentiment.fearAndGreedIndex)
-            }
-        }
-        .padding(.horizontal)
+        MarketSentimentView(
+            vix: viewModel.marketSentiment.vix,
+            fearAndGreedIndex: viewModel.marketSentiment.fearAndGreedIndex
+        )
     }
     
+    // AnalysisView.swift의 newsSection 부분 수정
+    // newsSection 수정
     private var newsSection: some View {
         Group {
             if !viewModel.newsData.isEmpty {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Recent News")
-                        .font(.headline)
-                        .padding(.horizontal)
-                        .padding(.top)
+                VStack(alignment: .leading, spacing: 2) {
+                    // 헤더
+                    HStack {
+                        Text(viewModel.selectedLanguage.code == "en" ? "Recent News" : "최근 뉴스")
+                            .font(.headline)
+                        Spacer()
+                    }
+                    .padding(.horizontal)
                     
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 15) {
-                            ForEach(viewModel.newsData, id: \.title) { news in
-                                NewsCard(news: news)
-                                    .frame(width: 300)
+                    // 페이지 뷰로 뉴스 표시
+                    TabView {
+                        // 첫 번째 페이지 (1-5)
+                        GeometryReader { geometry in
+                            VStack(alignment: .leading, spacing: 8) {
+                                ForEach(Array(viewModel.newsData.prefix(5)), id: \.title) { news in
+                                    NewsCardLink(news: news)
+                                }
+                            }
+                            .frame(width: geometry.size.width)
+                            .padding(.horizontal)
+                        }
+                        
+                        // 두 번째 페이지 (6-10)
+                        if viewModel.newsData.count > 5 {
+                            GeometryReader { geometry in
+                                VStack(alignment: .leading, spacing: 8) {
+                                    ForEach(Array(viewModel.newsData.dropFirst(5).prefix(5)), id: \.title) { news in
+                                        NewsCardLink(news: news)
+                                    }
+                                }
+                                .frame(width: geometry.size.width)
+                                .padding(.horizontal)
                             }
                         }
-                        .padding(.horizontal)
                     }
+                    .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
+                    .frame(height: 5 * 80)
                 }
             }
         }
     }
+    
+    struct NewsCardLink: View {
+        let news: StockNews
+        @EnvironmentObject private var viewModel: StockViewModel
+        @State private var translatedTitle: String = ""
+        
+        var body: some View {
+            Link(destination: URL(string: news.link) ?? URL(string: "https://finance.yahoo.com")!) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(translatedTitle.isEmpty ? news.title : translatedTitle)
+                        .font(.subheadline)
+                        .lineLimit(2)
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.leading)
+                    
+                    Text(news.pubDate)
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(.systemBackground))
+                .cornerRadius(8)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .onAppear {
+                translateTitle()
+            }
+            .onChange(of: viewModel.selectedLanguage) { oldValue, newValue in
+                translateTitle()
+            }
+        }
+        
+        private func translateTitle() {
+            guard viewModel.selectedLanguage.code != "en" else {
+                translatedTitle = news.title
+                return
+            }
+            
+            Task {
+                do {
+                    // TranslationManager를 통한 번역
+                    let translated = try await TranslationManager.shared.translate(
+                        news.title,
+                        from: "en",
+                        to: viewModel.selectedLanguage.code
+                    )
+                    await MainActor.run {
+                        translatedTitle = translated
+                    }
+                } catch {
+                    print("News translation error: \(error)")
+                    translatedTitle = news.title
+                }
+            }
+        }
+    }
+
     
     private func aiAnalysisSection(_ analysis: StockAnalysis) -> some View {
         VStack(alignment: .leading, spacing: 15) {
@@ -454,24 +530,57 @@ struct AnalysisView: View {
         }
     }
     
+    // NewsCard의 onChange 수정
     struct NewsCard: View {
         let news: StockNews
+        @EnvironmentObject private var viewModel: StockViewModel
+        @State private var translatedTitle: String = ""
         
         var body: some View {
             Link(destination: URL(string: news.link) ?? URL(string: "https://finance.yahoo.com")!) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(news.title)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(translatedTitle.isEmpty ? news.title : translatedTitle)
                         .font(.subheadline)
                         .lineLimit(2)
                         .foregroundColor(.primary)
+                        .multilineTextAlignment(.leading)
+                    
                     Text(news.pubDate)
                         .font(.caption)
                         .foregroundColor(.gray)
                 }
-                .padding()
+                .padding(.vertical, 8)
+                .padding(.horizontal)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.gray.opacity(0.1))
+                .background(Color(.systemBackground))
                 .cornerRadius(8)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .onAppear {
+                translateTitle()
+            }
+            .onChange(of: viewModel.selectedLanguage) { oldValue, newValue in
+                translateTitle()
+            }
+        }
+        
+        private func translateTitle() {
+            guard viewModel.selectedLanguage.code != "en" else {
+                translatedTitle = news.title
+                return
+            }
+            
+            Task {
+                do {
+                    translatedTitle = try await TranslationManager.shared.translate(
+                        news.title,
+                        from: "en",
+                        to: viewModel.selectedLanguage.code
+                    )
+                } catch {
+                    print("News translation error: \(error)")
+                    translatedTitle = news.title
+                }
             }
         }
     }

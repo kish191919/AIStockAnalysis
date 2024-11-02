@@ -8,14 +8,17 @@ struct DecisionBadge: View {
     var body: some View {
         Text(decision.rawValue)
             .font(.caption)
+            .fontWeight(.medium)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(backgroundColor)
+            .background(
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(decisionColor)
+            )
             .foregroundColor(.white)
-            .cornerRadius(4)
     }
     
-    private var backgroundColor: Color {
+    private var decisionColor: Color {
         switch decision {
         case .bullish:
             return .green

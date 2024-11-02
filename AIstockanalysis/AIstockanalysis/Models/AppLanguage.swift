@@ -13,69 +13,69 @@ struct AppLanguage: Identifiable, Hashable, Codable {
     let locale: String
     
     static let allLanguages: [AppLanguage] = [
-        AppLanguage(name: "Afrikaans", code: "af", locale: "af_ZA"),
-        AppLanguage(name: "Հայերեն", code: "hy", locale: "hy_AM"),
-        AppLanguage(name: "Беларуская", code: "be", locale: "be_BY"),
-        AppLanguage(name: "Català", code: "ca", locale: "ca_ES"),
-        AppLanguage(name: "Hrvatski", code: "hr", locale: "hr_HR"),
-        AppLanguage(name: "Nederlands", code: "nl", locale: "nl_NL"),
-        AppLanguage(name: "Eesti", code: "et", locale: "et_EE"),
-        AppLanguage(name: "Français", code: "fr", locale: "fr_FR"),
-        AppLanguage(name: "Deutsch", code: "de", locale: "de_DE"),
-        AppLanguage(name: "Magyar", code: "hu", locale: "hu_HU"),
-        AppLanguage(name: "日本語", code: "ja", locale: "ja_JP"),
-        AppLanguage(name: "Lietuvių", code: "lt", locale: "lt_LT"),
-        AppLanguage(name: "മലയാളം", code: "ml", locale: "ml_IN"),
-        AppLanguage(name: "فارسی", code: "fa", locale: "fa_IR"),
-        AppLanguage(name: "Română", code: "ro", locale: "ro_RO"),
-        AppLanguage(name: "Slovenčina", code: "sk", locale: "sk_SK"),
-        AppLanguage(name: "Kiswahili", code: "sw", locale: "sw_KE"),
-        AppLanguage(name: "ไทย", code: "th", locale: "th_TH"),
-        AppLanguage(name: "Tiếng Việt", code: "vi", locale: "vi_VN"),
-        AppLanguage(name: "Hausa", code: "ha", locale: "ha_NG"),
-        AppLanguage(name: "Kreyòl ayisyen", code: "ht", locale: "ht_HT"),
-        AppLanguage(name: "Shqip", code: "sq", locale: "sq_AL"),
-        AppLanguage(name: "Azərbaycanca", code: "az", locale: "az_AZ"),
-        AppLanguage(name: "Български", code: "bg", locale: "bg_BG"),
-        AppLanguage(name: "中文（简体）", code: "zh", locale: "zh_CN"),
-        AppLanguage(name: "Čeština", code: "cs", locale: "cs_CZ"),
-        AppLanguage(name: "English", code: "en", locale: "en_US"),
-        AppLanguage(name: "Filipino", code: "fil", locale: "fil_PH"),
-        AppLanguage(name: "Galego", code: "gl", locale: "gl_ES"),
-        AppLanguage(name: "Ελληνικά", code: "el", locale: "el_GR"),
-        AppLanguage(name: "Íslenska", code: "is", locale: "is_IS"),
-        AppLanguage(name: "한국어", code: "ko", locale: "ko_KR"),
-        AppLanguage(name: "Македонски", code: "mk", locale: "mk_MK"),
-        AppLanguage(name: "Монгол", code: "mn", locale: "mn_MN"),
-        AppLanguage(name: "Polski", code: "pl", locale: "pl_PL"),
-        AppLanguage(name: "Русский", code: "ru", locale: "ru_RU"),
-        AppLanguage(name: "Slovenščina", code: "sl", locale: "sl_SI"),
-        AppLanguage(name: "Svenska", code: "sv", locale: "sv_SE"),
-        AppLanguage(name: "Türkçe", code: "tr", locale: "tr_TR"),
-        AppLanguage(name: "Cymraeg", code: "cy", locale: "cy_GB"),
-        AppLanguage(name: "हिन्दी", code: "hi", locale: "hi_IN"),
-        AppLanguage(name: "Shona", code: "sn", locale: "sn_ZW"),
-        AppLanguage(name: "العربية", code: "ar", locale: "ar_SA"),
-        AppLanguage(name: "Euskara", code: "eu", locale: "eu_ES"),
-        AppLanguage(name: "廣東話", code: "yue", locale: "yue_HK"),
-        AppLanguage(name: "中文（繁體）", code: "zh-Hant", locale: "zh_TW"),
-        AppLanguage(name: "Dansk", code: "da", locale: "da_DK"),
-        AppLanguage(name: "Esperanto", code: "eo", locale: "eo"),
-        AppLanguage(name: "Suomi", code: "fi", locale: "fi_FI"),
-        AppLanguage(name: "ქართული", code: "ka", locale: "ka_GE"),
-        AppLanguage(name: "ગુજરાતી", code: "gu", locale: "gu_IN"),
-        AppLanguage(name: "Italiano", code: "it", locale: "it_IT"),
-        AppLanguage(name: "Latviešu", code: "lv", locale: "lv_LV"),
-        AppLanguage(name: "Bahasa Melayu", code: "ms", locale: "ms_MY"),
-        AppLanguage(name: "Norsk", code: "no", locale: "nb_NO"),
-        AppLanguage(name: "Português", code: "pt", locale: "pt_PT"),
-        AppLanguage(name: "Српски", code: "sr", locale: "sr_RS"),
-        AppLanguage(name: "Español", code: "es", locale: "es_ES"),
-        AppLanguage(name: "தமிழ்", code: "ta", locale: "ta_IN"),
-        AppLanguage(name: "Українська", code: "uk", locale: "uk_UA"),
-        AppLanguage(name: "Gaeilge", code: "ga", locale: "ga_IE"),
-        AppLanguage(name: "اردو", code: "ur", locale: "ur_PK"),
-        AppLanguage(name: "සිංහල", code: "si", locale: "si_LK")
+        AppLanguage(name: "Afrikaans", code: "af", locale: "af"),        // 아프리칸스어는 영어로 표기
+        AppLanguage(name: "Shqip", code: "sq", locale: "sq"),            // Albanian
+        AppLanguage(name: "አማርኛ", code: "am", locale: "am"),            // Amharic
+        AppLanguage(name: "العربية", code: "ar", locale: "ar"),          // Arabic
+        AppLanguage(name: "Հայերեն", code: "hy", locale: "hy"),         // Armenian
+        AppLanguage(name: "অসমীয়া", code: "as", locale: "as"),          // Assamese
+        AppLanguage(name: "Azərbaycan", code: "az", locale: "az"),       // Azerbaijani
+        AppLanguage(name: "বাংলা", code: "bn", locale: "bn"),            // Bengali
+        AppLanguage(name: "Bosanski", code: "bs", locale: "bs"),         // Bosnian
+        AppLanguage(name: "Български", code: "bg", locale: "bg"),        // Bulgarian
+        AppLanguage(name: "中文", code: "zh-Hans", locale: "zh"),        // Chinese (Simplified)
+        AppLanguage(name: "中文繁體", code: "zh-Hant", locale: "zh-TW"), // Chinese (Traditional)
+        AppLanguage(name: "Hrvatski", code: "hr", locale: "hr"),         // Croatian
+        AppLanguage(name: "Čeština", code: "cs", locale: "cs"),          // Czech
+        AppLanguage(name: "Dansk", code: "da", locale: "da"),            // Danish
+        AppLanguage(name: "دری", code: "prs", locale: "prs"),           // Dari
+        AppLanguage(name: "Nederlands", code: "nl", locale: "nl"),       // Dutch
+        AppLanguage(name: "English", code: "en", locale: "en"),          // English
+        AppLanguage(name: "Eesti", code: "et", locale: "et"),            // Estonian
+        AppLanguage(name: "Suomi", code: "fi", locale: "fi"),            // Finnish
+        AppLanguage(name: "Français", code: "fr", locale: "fr"),         // French
+        AppLanguage(name: "ქართული", code: "ka", locale: "ka"),         // Georgian
+        AppLanguage(name: "Deutsch", code: "de", locale: "de"),          // German
+        AppLanguage(name: "Ελληνικά", code: "el", locale: "el"),        // Greek
+        AppLanguage(name: "ગુજરાતી", code: "gu", locale: "gu"),         // Gujarati
+        AppLanguage(name: "Kreyòl Ayisyen", code: "ht", locale: "ht"),  // Haitian Creole
+        AppLanguage(name: "עברית", code: "he", locale: "he"),           // Hebrew
+        AppLanguage(name: "हिंदी", code: "hi", locale: "hi"),            // Hindi
+        AppLanguage(name: "Magyar", code: "hu", locale: "hu"),           // Hungarian
+        AppLanguage(name: "Íslenska", code: "is", locale: "is"),         // Icelandic
+        AppLanguage(name: "Bahasa Indonesia", code: "id", locale: "id"), // Indonesian
+        AppLanguage(name: "Gaeilge", code: "ga", locale: "ga"),         // Irish
+        AppLanguage(name: "Italiano", code: "it", locale: "it"),         // Italian
+        AppLanguage(name: "日本語", code: "ja", locale: "ja"),           // Japanese
+        AppLanguage(name: "ಕನ್ನಡ", code: "kn", locale: "kn"),           // Kannada
+        AppLanguage(name: "Қазақ", code: "kk", locale: "kk"),           // Kazakh
+        AppLanguage(name: "한국어", code: "ko", locale: "ko"),           // Korean
+        AppLanguage(name: "Latviešu", code: "lv", locale: "lv"),        // Latvian
+        AppLanguage(name: "Lietuvių", code: "lt", locale: "lt"),        // Lithuanian
+        AppLanguage(name: "Bahasa Melayu", code: "ms", locale: "ms"),   // Malay
+        AppLanguage(name: "മലയാളം", code: "ml", locale: "ml"),          // Malayalam
+        AppLanguage(name: "Malti", code: "mt", locale: "mt"),           // Maltese
+        AppLanguage(name: "मराठी", code: "mr", locale: "mr"),           // Marathi
+        AppLanguage(name: "Norsk", code: "nb", locale: "nb"),           // Norwegian
+        AppLanguage(name: "فارسی", code: "fa", locale: "fa"),           // Persian
+        AppLanguage(name: "Polski", code: "pl", locale: "pl"),          // Polish
+        AppLanguage(name: "Português", code: "pt", locale: "pt"),       // Portuguese
+        AppLanguage(name: "Română", code: "ro", locale: "ro"),          // Romanian
+        AppLanguage(name: "Русский", code: "ru", locale: "ru"),         // Russian
+        AppLanguage(name: "Српски", code: "sr", locale: "sr"),          // Serbian
+        AppLanguage(name: "Slovenčina", code: "sk", locale: "sk"),      // Slovak
+        AppLanguage(name: "Slovenščina", code: "sl", locale: "sl"),     // Slovenian
+        AppLanguage(name: "Español", code: "es", locale: "es"),         // Spanish
+        AppLanguage(name: "Kiswahili", code: "sw", locale: "sw"),       // Swahili
+        AppLanguage(name: "Svenska", code: "sv", locale: "sv"),         // Swedish
+        AppLanguage(name: "தமிழ்", code: "ta", locale: "ta"),           // Tamil
+        AppLanguage(name: "తెలుగు", code: "te", locale: "te"),          // Telugu
+        AppLanguage(name: "ไทย", code: "th", locale: "th"),             // Thai
+        AppLanguage(name: "Türkçe", code: "tr", locale: "tr"),         // Turkish
+        AppLanguage(name: "Українська", code: "uk", locale: "uk"),      // Ukrainian
+        AppLanguage(name: "اردو", code: "ur", locale: "ur"),            // Urdu
+        AppLanguage(name: "Tiếng Việt", code: "vi", locale: "vi"),     // Vietnamese
+        AppLanguage(name: "Cymraeg", code: "cy", locale: "cy")         // Welsh
     ]
     
     // 기본 언어를 반환하는 정적 프로퍼티
@@ -154,11 +154,11 @@ extension Array where Element == AppLanguage {
     }
     
     func sortedByPopularity() -> [AppLanguage] {
-        let popularCodes = ["en", "es", "zh", "ar", "hi", "fr", "ru", "pt", "ja", "de"]
-        return self.sorted { first, second in
-            let firstIndex = popularCodes.firstIndex(of: first.code) ?? Int.max
-            let secondIndex = popularCodes.firstIndex(of: second.code) ?? Int.max
-            return firstIndex < secondIndex
+            let popularCodes = ["en", "es", "zh", "ar", "fr", "ru", "pt", "ja", "de"]
+            return self.sorted { first, second in
+                let firstIndex = popularCodes.firstIndex(of: first.code) ?? Int.max
+                let secondIndex = popularCodes.firstIndex(of: second.code) ?? Int.max
+                return firstIndex < secondIndex
+            }
         }
-    }
 }

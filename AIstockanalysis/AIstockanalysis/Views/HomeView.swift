@@ -175,35 +175,35 @@ struct HomeView: View {
     }
     
     private var recentSearchesSection: some View {
-        Group {
-            if !viewModel.favorites.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(viewModel.favorites, id: \.self) { symbol in
-                            Text(symbol)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(Color.gray.opacity(0.1))
-                                .cornerRadius(15)
-                                .foregroundColor(.primary)
-                                .onTapGesture {
-                                    viewModel.stockSymbol = symbol
-                                    startSearch()
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                let filteredFavorites = viewModel.favorites.filter { $0 != viewModel.stockSymbol }
+                if !filteredFavorites.isEmpty {
+                    ForEach(filteredFavorites, id: \.self) { symbol in
+                        Text(symbol)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(15)
+                            .foregroundColor(.primary)
+                            .onTapGesture {
+                                // 검색창에 심볼만 입력
+                                viewModel.stockSymbol = symbol
+                            }
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    symbolToDelete = symbol
+                                    showDeleteConfirmation = true
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
                                 }
-                                .contextMenu {
-                                    Button(role: .destructive) {
-                                        symbolToDelete = symbol
-                                        showDeleteConfirmation = true
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                }
-                        }
+                            }
                     }
-                    .padding(.horizontal)
                 }
             }
+            .padding(.horizontal)
         }
+        .frame(height: 40)
     }
     
     // MARK: - Helper Functions
