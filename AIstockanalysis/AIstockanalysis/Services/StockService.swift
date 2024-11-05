@@ -414,51 +414,51 @@ extension StockService {
             }
             
             let response = try JSONDecoder().decode(SearchResponse.self, from: data)
-                        return response.quotes.map { quote in
-                            (symbol: quote.symbol, name: quote.longname ?? quote.shortname ?? quote.symbol)
-                        }
-                    } catch {
-                        throw StockError.networkError
-                    }
-                }
+            return response.quotes.map { quote in
+                (symbol: quote.symbol, name: quote.longname ?? quote.shortname ?? quote.symbol)
             }
+        } catch {
+            throw StockError.networkError
+        }
+    }
+}
 
-            // MARK: - Error Types
-            public enum StockError: LocalizedError {
-                case invalidResponse
-                case apiError(String)
-                case noDataAvailable
-                case invalidSymbol
-                case networkError
-                
-                public var errorDescription: String? {
-                    switch self {
-                    case .invalidResponse:
-                        return "Invalid response from server"
-                    case .apiError(let message):
-                        return message
-                    case .noDataAvailable:
-                        return "No data available for this stock"
-                    case .invalidSymbol:
-                        return "Invalid stock symbol"
-                    case .networkError:
-                        return "Network connection error"
-                    }
-                }
-            }
+// MARK: - Error Types
+public enum StockError: LocalizedError {
+    case invalidResponse
+    case apiError(String)
+    case noDataAvailable
+    case invalidSymbol
+    case networkError
+    
+    public var errorDescription: String? {
+        switch self {
+        case .invalidResponse:
+            return "Invalid response from server"
+        case .apiError(let message):
+            return message
+        case .noDataAvailable:
+            return "No data available for this stock"
+        case .invalidSymbol:
+            return "Invalid stock symbol"
+        case .networkError:
+            return "Network connection error"
+        }
+    }
+}
 
-            // MARK: - Data Models
-            public struct StockNews: Codable {
-                let title: String
-                let pubDate: String
-                let link: String
-            }
+// MARK: - Data Models
+public struct StockNews: Codable {
+    let title: String
+    let pubDate: String
+    let link: String
+}
 
-            public struct SimpleNewsTitle: Codable {
-                let title: String
-            }
+public struct SimpleNewsTitle: Codable {
+    let title: String
+}
 
-            public struct MarketSentiment: Codable {
-                let vix: Double
-                let fearAndGreedIndex: Double
-            }
+public struct MarketSentiment: Codable {
+    let vix: Double
+    let fearAndGreedIndex: Double
+}

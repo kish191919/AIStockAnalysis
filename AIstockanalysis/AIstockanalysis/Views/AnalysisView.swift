@@ -42,6 +42,7 @@ struct AnalysisView: View {
                 LanguageListView(selectedLanguage: $viewModel.selectedLanguage)
             }
         }
+        
     }
     
     // MARK: - View Components
@@ -214,10 +215,11 @@ struct AnalysisView: View {
                     .scaleEffect(1.5)
                     .padding()
             } else if !viewModel.stockSymbol.isEmpty && !viewModel.dayData.isEmpty {
-                VStack(alignment: .leading, spacing: 20) {  // spacing을 20으로 증가
+                VStack(alignment: .leading, spacing: 20) {
                     stockInfoHeader
                     stockChartSection
                     analysisSection
+                    
                     marketSentimentSection
                     newsSection
                 }
@@ -330,9 +332,12 @@ struct AnalysisView: View {
         let news: StockNews
         @EnvironmentObject private var viewModel: StockViewModel
         @State private var translatedTitle: String = ""
-        
+        @Environment(\.openURL) var openURL
+
         var body: some View {
-            Link(destination: URL(string: news.link) ?? URL(string: "https://finance.yahoo.com")!) {
+            Button(action: {
+                handleNewsClick()
+            }) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(translatedTitle.isEmpty ? news.title : translatedTitle)
                         .font(.subheadline)
@@ -350,12 +355,32 @@ struct AnalysisView: View {
                 .background(Color(.systemBackground))
                 .cornerRadius(8)
             }
-            .buttonStyle(PlainButtonStyle())
+            .buttonStyle(NewsCardButtonStyle())
             .onAppear {
                 translateTitle()
             }
             .onChange(of: viewModel.selectedLanguage) { oldValue, newValue in
                 translateTitle()
+            }
+        }
+        
+        private func handleNewsClick() {
+            // URL이 유효한지 확인하고 필요한 인코딩 처리
+            var urlString = news.link
+            if !urlString.lowercased().hasPrefix("http") {
+                urlString = "https://" + urlString
+            }
+            
+            // URL 인코딩
+            if let encodedString = urlString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+               let url = URL(string: encodedString) {
+                openURL(url) { accepted in
+                    if !accepted {
+                        print("URL could not be opened: \(url)")
+                    }
+                }
+            } else {
+                print("Invalid URL: \(urlString)")
             }
         }
         
@@ -367,7 +392,6 @@ struct AnalysisView: View {
             
             Task {
                 do {
-                    // TranslationManager를 통한 번역
                     let translated = try await TranslationManager.shared.translate(
                         news.title,
                         from: "en",
@@ -384,6 +408,14 @@ struct AnalysisView: View {
         }
     }
 
+    struct NewsCardButtonStyle: ButtonStyle {
+        func makeBody(configuration: Configuration) -> some View {
+            configuration.label
+                .opacity(configuration.isPressed ? 0.7 : 1.0)
+                .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+                .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+        }
+    }
     
     private func aiAnalysisSection(_ analysis: StockAnalysis) -> some View {
         VStack(alignment: .leading, spacing: 15) {
@@ -581,6 +613,31 @@ struct AnalysisView: View {
                     print("News translation error: \(error)")
                     translatedTitle = news.title
                 }
+            }
+        }
+    }
+
+    struct RecommendationBar: View {
+        let value: Int
+        let total: Int
+        let color: Color
+        
+        var height: CGFloat {
+            let percentage = CGFloat(value) / CGFloat(total)
+            return max(percentage * 100, 4) // 최소 높이 4
+        }
+        
+        var body: some View {
+            VStack {
+                if value > 0 {
+                    Text("\(value)")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
+                
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(color)
+                    .frame(width: 30, height: height)
             }
         }
     }

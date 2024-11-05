@@ -8,60 +8,196 @@ struct HistoryView: View {
    @Environment(\.managedObjectContext) private var viewContext
    @FetchRequest(
        sortDescriptors: [
-           SortDescriptor(\AnalysisHistoryEntity.symbol, order: .forward),
-           SortDescriptor(\AnalysisHistoryEntity.timestamp, order: .reverse)
+           NSSortDescriptor(keyPath: \AnalysisHistoryEntity.symbol, ascending: true),
+           NSSortDescriptor(keyPath: \AnalysisHistoryEntity.timestamp, ascending: false)
        ],
        animation: .default
    ) private var historyItems: FetchedResults<AnalysisHistoryEntity>
    
-   @AppStorage("pinnedSymbols") private var pinnedSymbols: [String] = []
-   @AppStorage("lastAccessedSymbols") private var lastAccessedSymbols: [String] = []
-   @State private var expandedFolders: Set<String> = []
+   // CoreData 변경 감지를 위한 프로퍼티 추가
+   @FetchRequest(
+       sortDescriptors: [
+           NSSortDescriptor(keyPath: \AnalysisHistoryEntity.timestamp, ascending: false)
+       ],
+       animation: .default
+   ) private var recentItems: FetchedResults<AnalysisHistoryEntity>
+   
+   @State private var pinnedSymbols: [String] = {
+       if let data = UserDefaults.standard.data(forKey: "pinnedSymbols"),
+          let symbols = try? JSONDecoder().decode([String].self, from: data) {
+           return symbols
+       }
+       return []
+   }() {
+       didSet {
+           if let encoded = try? JSONEncoder().encode(pinnedSymbols) {
+               UserDefaults.standard.set(encoded, forKey: "pinnedSymbols")
+           }
+       }
+   }
+
+   @State private var lastAccessedSymbols: [String] = {
+       if let data = UserDefaults.standard.data(forKey: "lastAccessedSymbols"),
+          let symbols = try? JSONDecoder().decode([String].self, from: data) {
+           return symbols
+       }
+       return []
+   }() {
+       didSet {
+           if let encoded = try? JSONEncoder().encode(lastAccessedSymbols) {
+               UserDefaults.standard.set(encoded, forKey: "lastAccessedSymbols")
+           }
+       }
+   }
+   
+   @State private var expandedFolder: String? = nil
    @State private var expandedItems: Set<UUID> = []
-    
+   @State private var sortOption: SortOption = .alphabetical
    
    private let gridColumns = [
        GridItem(.flexible(), spacing: 10),
        GridItem(.flexible(), spacing: 10)
    ]
    
+    enum SortOption {
+        case alphabetical
+        case recent
+        
+        var title: String {
+            switch self {
+            case .alphabetical: return "Alphabetical"
+            case .recent: return "Recent First"
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .alphabetical: return "textformat"
+            case .recent: return "clock"
+            }
+        }
+    }
+   
    private func groupedHistory() -> [String: [AnalysisHistoryEntity]] {
        Dictionary(grouping: Array(historyItems)) { $0.symbol ?? "" }
+   }
+   
+   private func updateLastAccessedSymbolsFromCoreData() {
+       let symbols = Array(Set(recentItems.map { $0.symbol ?? "" }))
+       var updatedSymbols: [String] = []
+       
+       // 가장 최근 타임스탬프 순으로 정렬된 심볼 목록 생성
+       for item in recentItems {
+           if let symbol = item.symbol,
+              !updatedSymbols.contains(symbol) {
+               updatedSymbols.append(symbol)
+           }
+       }
+       
+       // lastAccessedSymbols 업데이트
+       self.lastAccessedSymbols = updatedSymbols
+       
+       // UserDefaults에 저장
+       if let encoded = try? JSONEncoder().encode(updatedSymbols) {
+           UserDefaults.standard.set(encoded, forKey: "lastAccessedSymbols")
+       }
    }
    
    var sortedSymbols: [String] {
        let allSymbols = Array(Set(historyItems.map { $0.symbol ?? "" }))
        
-       // 고정된 심볼, 최근 접근 순서, 알파벳 순으로 정렬
        return allSymbols.sorted { symbol1, symbol2 in
+           // 1. 고정된 심볼 우선
            if pinnedSymbols.contains(symbol1) != pinnedSymbols.contains(symbol2) {
                return pinnedSymbols.contains(symbol1)
            }
            
-           if let index1 = lastAccessedSymbols.firstIndex(of: symbol1),
-              let index2 = lastAccessedSymbols.firstIndex(of: symbol2) {
-               return index1 < index2
+           // 2. 선택된 정렬 옵션에 따라 정렬
+           switch sortOption {
+           case .alphabetical:
+               return symbol1 < symbol2
+           case .recent:
+               // 최근 검색 순으로 정렬
+               if let index1 = lastAccessedSymbols.firstIndex(of: symbol1),
+                  let index2 = lastAccessedSymbols.firstIndex(of: symbol2) {
+                   return index1 < index2
+               }
+               // lastAccessedSymbols에 없는 심볼은 알파벳 순으로
+               if lastAccessedSymbols.contains(symbol1) != lastAccessedSymbols.contains(symbol2) {
+                   return lastAccessedSymbols.contains(symbol1)
+               }
+               return symbol1 < symbol2
            }
-           
-           if lastAccessedSymbols.contains(symbol1) != lastAccessedSymbols.contains(symbol2) {
-               return lastAccessedSymbols.contains(symbol1)
-           }
-           
-           return symbol1 < symbol2
        }
    }
    
-   var body: some View {
-       NavigationView {
-           ScrollView(.vertical, showsIndicators: true) {
-               VStack(alignment: .leading, spacing: 10) {
-                   folderGridView
-                   analysisListView
-               }
-           }
-           .navigationTitle("Analysis History")
-       }
-   }
+    var body: some View {
+        NavigationView {
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: 10) {
+                    folderGridView
+                    analysisListView
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 8) {
+                        Text("Analysis History")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        Menu {
+                            Button(action: {
+                                withAnimation {
+                                    sortOption = .alphabetical
+                                }
+                            }) {
+                                HStack {
+                                    Image(systemName: "textformat")
+                                    Text("Alphabetical")
+                                    if sortOption == .alphabetical {
+                                        Image(systemName: "checkmark")
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+                            }
+                            
+                            Button(action: {
+                                withAnimation {
+                                    sortOption = .recent
+                                }
+                            }) {
+                                HStack {
+                                    Image(systemName: "clock")
+                                    Text("Recent First")
+                                    if sortOption == .recent {
+                                        Image(systemName: "checkmark")
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: sortOption == .alphabetical ? "textformat" : "clock")
+                                    .foregroundColor(.blue)
+                                    .frame(width: 20, height: 20)
+                                
+                                Image(systemName: "chevron.down")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                            .padding(6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color(.systemGray6))
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
    
    private var folderGridView: some View {
        LazyVGrid(columns: gridColumns, spacing: 10) {
@@ -74,7 +210,7 @@ struct HistoryView: View {
    
    private var analysisListView: some View {
        ForEach(sortedSymbols, id: \.self) { symbol in
-           if expandedFolders.contains(symbol) {
+           if expandedFolder == symbol {
                analysisGroup(for: symbol)
            }
        }
@@ -102,7 +238,7 @@ struct HistoryView: View {
        let itemCount = groupedHistory()[symbol]?.count ?? 0
        return FolderButton(
            symbol: symbol,
-           isExpanded: expandedFolders.contains(symbol),
+           isExpanded: expandedFolder == symbol,
            itemCount: itemCount,
            isPinned: pinnedSymbols.contains(symbol)
        ) {
@@ -152,19 +288,19 @@ struct HistoryView: View {
        // 최근 접근 목록에서도 제거
        lastAccessedSymbols.removeAll { $0 == symbol }
        
-       // 확장된 폴더 목록에서도 제거
-       expandedFolders.remove(symbol)
+       // 확장된 폴더가 현재 삭제하려는 심볼이면 nil로 설정
+       if expandedFolder == symbol {
+           expandedFolder = nil
+       }
        
        try? viewContext.save()
    }
    
    private func toggleFolder(_ symbol: String) {
-       if expandedFolders.contains(symbol) {
-           expandedFolders.remove(symbol)
+       if expandedFolder == symbol {
+           expandedFolder = nil
        } else {
-           expandedFolders.insert(symbol)
-           // 폴더를 열 때 최근 접근 목록 업데이트
-           updateLastAccessed(symbol)
+           expandedFolder = symbol
        }
    }
    
@@ -173,14 +309,6 @@ struct HistoryView: View {
            expandedItems.remove(id)
        } else {
            expandedItems.insert(id)
-       }
-   }
-   
-   private func updateLastAccessed(_ symbol: String) {
-       lastAccessedSymbols.removeAll { $0 == symbol }
-       lastAccessedSymbols.insert(symbol, at: 0)
-       if lastAccessedSymbols.count > 20 {  // 최대 20개만 유지
-           lastAccessedSymbols.removeLast()
        }
    }
 }
@@ -276,4 +404,3 @@ struct HistoryItemExpandableView: View {
            .cornerRadius(8)
    }
 }
-

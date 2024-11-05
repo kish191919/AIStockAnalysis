@@ -121,6 +121,7 @@ class StockViewModel: ObservableObject {
         do {
             let (day, month, news, sentiment, jsonOutput) = try await StockService.fetchStockData(symbol: stockSymbol.uppercased())
             
+              
             await MainActor.run {
                 self.dayData = day
                 self.monthData = month
@@ -252,8 +253,10 @@ class StockViewModel: ObservableObject {
     
     private func saveAnalysisToHistory(_ analysis: StockAnalysis, currentPrice: Double) {
         let historyItem = AnalysisHistoryEntity(context: viewContext)
+        let symbol = stockSymbol.uppercased()  // 대문자로 변환
+        
         historyItem.id = UUID()
-        historyItem.symbol = stockSymbol
+        historyItem.symbol = symbol
         historyItem.timestamp = Date()
         historyItem.decision = analysis.decision.rawValue
         historyItem.confidence = Int16(analysis.percentage)
@@ -262,10 +265,46 @@ class StockViewModel: ObservableObject {
         historyItem.reason = analysis.reason
         historyItem.language = selectedLanguage.code
         
+        // lastAccessedSymbols 업데이트
+        if let data = UserDefaults.standard.data(forKey: "lastAccessedSymbols"),
+           var symbols = try? JSONDecoder().decode([String].self, from: data) {
+            symbols.removeAll { $0 == symbol }
+            symbols.insert(symbol, at: 0)
+            if symbols.count > 20 {
+                symbols.removeLast()
+            }
+            if let encoded = try? JSONEncoder().encode(symbols) {
+                UserDefaults.standard.set(encoded, forKey: "lastAccessedSymbols")
+            }
+        } else {
+            if let encoded = try? JSONEncoder().encode([symbol]) {
+                UserDefaults.standard.set(encoded, forKey: "lastAccessedSymbols")
+            }
+        }
+        
         do {
             try viewContext.save()
         } catch {
             print("Error saving analysis history: \(error)")
+        }
+    }
+
+    // 최근 접근 심볼 업데이트 함수 추가
+    private func updateLastAccessedSymbols(_ symbol: String) {
+        if let data = UserDefaults.standard.data(forKey: "lastAccessedSymbols"),
+           var symbols = try? JSONDecoder().decode([String].self, from: data) {
+            symbols.removeAll { $0 == symbol }
+            symbols.insert(symbol, at: 0)
+            if symbols.count > 20 {
+                symbols.removeLast()
+            }
+            if let encoded = try? JSONEncoder().encode(symbols) {
+                UserDefaults.standard.set(encoded, forKey: "lastAccessedSymbols")
+            }
+        } else {
+            if let encoded = try? JSONEncoder().encode([symbol]) {
+                UserDefaults.standard.set(encoded, forKey: "lastAccessedSymbols")
+            }
         }
     }
     
