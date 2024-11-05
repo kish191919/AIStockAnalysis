@@ -68,7 +68,8 @@ class OpenAIService: ObservableObject {
         return cumulativeUsage.description
     }
     
-    func analyzeStock(jsonData: String) async throws -> StockAnalysis {
+    // 주식 분석
+    func analyzeStock(jsonData: String, targetLanguage: String) async throws -> StockAnalysis {
         let urlString = "https://api.openai.com/v1/chat/completions"
         guard let url = URL(string: urlString) else {
             throw URLError(.badURL)
@@ -81,11 +82,12 @@ class OpenAIService: ObservableObject {
         
         let prompt = """
             Based on this stock data: \(jsonData)
-            Provide your response in the following JSON format:
+            Analyze the data and provide your response in \(targetLanguage) language.
+            Use the following JSON format:
             {
                 "decision": "BULLISH/BEARISH/NEUTRAL",
                 "percentage": <number between 1-100>,
-                "reason": "<your analysis>",
+                "reason": "<your analysis in \(targetLanguage)>",
                 "expected_next_day_price": "<predicted price as string with 2 decimal places>"
             }
             """
@@ -94,12 +96,14 @@ class OpenAIService: ObservableObject {
             "model": "gpt-4-turbo-preview",
             "messages": [
                 ["role": "system", "content": """
-                You are a stock investment expert. Your job is to analyze market data using tools like Moving Averages (MA), MACD, ADX, RSI, and Bollinger Bands. You explain these concepts in simple terms for beginners. You also look at recent news, the Fear and Greed Index, the VIX Index, and the current stock price to make trading recommendations (BULLISH, BEARISH, or NEUTRAL).You will provide your analysis in a clear format, including:
-                        1. A clear BULLISH, BEARISH, or NEUTRAL recommendation
-                        2. Confidence percentage (1-100)
-                        3. Reasoning behind your decision
-                        4. Expected next day's closing price (as string with 2 decimal places)
-                For beginners in stock investment, the explanation should be clear and simple
+                You are a stock investment expert who can analyze market data and provide responses in multiple languages. 
+                You explain market concepts in simple terms for beginners in their preferred language.
+                Your analysis should include:
+                1. Clear BULLISH, BEARISH, or NEUTRAL recommendation
+                2. Confidence percentage (1-100)
+                3. Detailed reasoning in the specified language
+                4. Expected next day's closing price
+                Focus on providing clear, actionable insights while maintaining accuracy.
                 """],
                 ["role": "user", "content": prompt]
             ],
@@ -133,7 +137,7 @@ class OpenAIService: ObservableObject {
             let cost = calculateCost(usage: usage)
             lastUsage = cost
             updateCumulativeUsage(cost: cost)
-            print("💰 OpenAI Usage: \(cost.description)")
+            print("💰 OpenAI Analysis Usage: \(cost.description)")
         }
         
         guard let jsonString = openAIResponse.choices.first?.message.content else {

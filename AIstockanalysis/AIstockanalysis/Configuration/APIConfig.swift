@@ -19,7 +19,4 @@ struct APIConfig {
         return value(for: "OPENAI_API_KEY")
     }
     
-    static var azureTranslatorKey: String {
-        return value(for: "AZURE_TRANSLATOR_KEY")
-    }
 }

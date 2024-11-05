@@ -19,7 +19,7 @@ struct HomeView: View {
                     recentSearchesSection
                 }
             }
-            .navigationTitle("Stock Search")
+            .navigationTitle("AI Analysis")
             .alert("Delete Symbol", isPresented: $showDeleteConfirmation, presenting: symbolToDelete) { symbol in
                 Button("Cancel", role: .cancel) { }
                 Button("Delete", role: .destructive) {

@@ -20,7 +20,7 @@ struct AnalysisView: View {
                     mainContentSection
                 }
             }
-            .navigationTitle("Analysis")
+            .navigationTitle("AI Analysis")
             .alert("Delete Symbol", isPresented: $showDeleteConfirmation, presenting: symbolToDelete) { symbol in
                 Button("Cancel", role: .cancel) { }
                 Button("Delete", role: .destructive) {
@@ -42,35 +42,12 @@ struct AnalysisView: View {
                 LanguageListView(selectedLanguage: $viewModel.selectedLanguage)
             }
         }
-        
     }
+
     
-    // MARK: - View Components
-    
-    private var languageSelector: some View {
-        HStack {
-            Spacer()
-            Button(action: {
-                showLanguageSheet = true
-            }) {
-                HStack {
-                    Text(viewModel.selectedLanguage.name)
-                        .lineLimit(1)
-                    Image(systemName: "globe")
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(8)
-            }
-        }
-        .padding(.horizontal)
-    }
-    
+    // MARK: - Search Bar Section
     private var searchBarSection: some View {
         VStack(alignment: .leading) {
-            // 첫 번째 줄: 검색창과 번역 버튼
             HStack(spacing: 8) {
                 TextField("Enter stock symbol or company name", text: $viewModel.stockSymbol)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -93,14 +70,13 @@ struct AnalysisView: View {
                     }
                 }
                 
-                // 번역 버튼
                 Button(action: {
                     showLanguageSheet = true
                 }) {
                     Text(viewModel.selectedLanguage.name)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
-                        .frame(width: 80)  // 번역 버튼 너비 고정
+                        .frame(width: 80)
                         .padding(.vertical, 8)
                         .background(Color.blue)
                         .foregroundColor(.white)
@@ -108,7 +84,6 @@ struct AnalysisView: View {
                 }
             }
             
-            // 두 번째 줄: AI 분석 버튼
             Button(action: {
                 if !viewModel.stockSymbol.isEmpty {
                     startSearch()
@@ -146,7 +121,7 @@ struct AnalysisView: View {
         }
         .padding(.horizontal)
     }
-    
+    // MARK: - Search Suggestions and Recent Searches
     private var searchSuggestionsView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
@@ -207,7 +182,7 @@ struct AnalysisView: View {
         .frame(height: 40)
     }
     
-    // AnalysisView.swift의 mainContentSection 수정
+    // MARK: - Main Content Section
     private var mainContentSection: some View {
         Group {
             if viewModel.isLoading {
@@ -219,7 +194,6 @@ struct AnalysisView: View {
                     stockInfoHeader
                     stockChartSection
                     analysisSection
-                    
                     marketSentimentSection
                     newsSection
                 }
@@ -237,21 +211,6 @@ struct AnalysisView: View {
         )
         .frame(height: 300)
         .padding(.horizontal, -4)
-    }
-    
-    private var stockInfoHeader: some View {
-        HStack {
-            Text(viewModel.stockSymbol)
-                .font(.title)
-                .bold()
-            
-            Text("$\(String(format: "%.2f", viewModel.currentPrice))")
-                .font(.title2)
-                .foregroundColor(.secondary)
-            
-            Spacer()
-        }
-        .padding(.horizontal)
     }
     
     private var analysisSection: some View {
@@ -281,13 +240,11 @@ struct AnalysisView: View {
         )
     }
     
-    // AnalysisView.swift의 newsSection 부분 수정
-    // newsSection 수정
+    // MARK: - News Section
     private var newsSection: some View {
         Group {
             if !viewModel.newsData.isEmpty {
                 VStack(alignment: .leading, spacing: 2) {
-                    // 헤더
                     HStack {
                         Text(viewModel.selectedLanguage.code == "en" ? "Recent News" : "최근 뉴스")
                             .font(.headline)
@@ -295,9 +252,7 @@ struct AnalysisView: View {
                     }
                     .padding(.horizontal)
                     
-                    // 페이지 뷰로 뉴스 표시
                     TabView {
-                        // 첫 번째 페이지 (1-5)
                         GeometryReader { geometry in
                             VStack(alignment: .leading, spacing: 8) {
                                 ForEach(Array(viewModel.newsData.prefix(5)), id: \.title) { news in
@@ -308,7 +263,6 @@ struct AnalysisView: View {
                             .padding(.horizontal)
                         }
                         
-                        // 두 번째 페이지 (6-10)
                         if viewModel.newsData.count > 5 {
                             GeometryReader { geometry in
                                 VStack(alignment: .leading, spacing: 8) {
@@ -328,10 +282,167 @@ struct AnalysisView: View {
         }
     }
     
+    // CompanyLogo 컴포넌트 추가
+    struct CompanyLogo: View {
+        let symbol: String
+        let size: CGFloat
+        
+        private var logoUrl: URL? {
+            URL(string: "https://logo.clearbit.com/\(getCompanyDomain(symbol)).com")
+        }
+        
+        private func getCompanyDomain(_ symbol: String) -> String {
+            let domainMap: [String: String] = [
+                // 기술 기업
+                "AAPL": "apple",
+                "MSFT": "microsoft",
+                "GOOGL": "google",
+                "GOOG": "google",
+                "AMZN": "amazon",
+                "META": "meta",
+                "NFLX": "netflix",
+                "TSLA": "tesla",
+                "IBM": "ibm",
+                "NVDA": "nvidia",
+                "AMD": "amd",
+                "INTC": "intel",
+                "ORCL": "oracle",
+                "CRM": "salesforce",
+                "ADBE": "adobe",
+                "CSCO": "cisco",
+                "PYPL": "paypal",
+                "UBER": "uber",
+                "LYFT": "lyft",
+                "SNAP": "snapchat",
+                "SPOT": "spotify",
+                "ZM": "zoom",
+                "TWTR": "twitter",
+                
+                // 금융
+                "V": "visa",
+                "MA": "mastercard",
+                "JPM": "jpmorgan",
+                "BAC": "bankofamerica",
+                "WFC": "wellsfargo",
+                "GS": "goldmansachs",
+                "MS": "morganstanley",
+                "AXP": "americanexpress",
+                "C": "citigroup",
+                
+                // 소매/소비재
+                "WMT": "walmart",
+                "TGT": "target",
+                "COST": "costco",
+                "HD": "homedepot",
+                "SBUX": "starbucks",
+                "MCD": "mcdonalds",
+                "NKE": "nike",
+                "LULU": "lululemon",
+                "ETSY": "etsy",
+                
+                // 자동차
+                "F": "ford",
+                "GM": "gm",
+                "TM": "toyota",
+                "HMC": "honda",
+                "RACE": "ferrari",
+                
+                // 통신
+                "T": "att",
+                "VZ": "verizon",
+                "TMUS": "tmobile",
+                
+                // 미디어/엔터테인먼트
+                "DIS": "disney",
+                "CMCSA": "comcast",
+                "SONY": "sony",
+                
+                // 제약/의료
+                "JNJ": "jnj",
+                "PFE": "pfizer",
+                "MRK": "merck",
+                "ABBV": "abbvie",
+                "BMY": "bms",
+                
+                // 소비재
+                "PG": "pg",
+                "KO": "coca-cola",
+                "PEP": "pepsi",
+                "UL": "unilever",
+                "NVS": "novartis",
+                
+                // 아시아 기업
+                "BABA": "alibaba",
+                "TSM": "tsmc",
+                "BIDU": "baidu",
+                "9988.HK": "alibaba",
+                "005930.KS": "samsung",
+                "000660.KS": "skhynix",
+                "035420.KS": "naver",
+                "035720.KS": "kakao",
+                
+                // 항공/여행
+                "DAL": "delta",
+                "UAL": "united",
+                "AAL": "americanairlines",
+                "MAR": "marriott",
+                "HLT": "hilton",
+                
+                // 에너지
+                "XOM": "exxonmobil",
+                "CVX": "chevron",
+                "BP": "bp",
+                "SHELL": "shell"
+            ]
+            return domainMap[symbol.uppercased()] ?? symbol.lowercased()
+        }
+        
+        var body: some View {
+            AsyncImage(url: logoUrl) { image in
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: size, height: size)
+            } placeholder: {
+                ZStack {
+                    Circle()
+                        .fill(Color.gray.opacity(0.1))
+                    Text(symbol.prefix(1))
+                        .font(.system(size: size * 0.5, weight: .medium))
+                        .foregroundColor(.gray)
+                }
+                .frame(width: size, height: size)
+            }
+        }
+    }
+    
+    private var stockInfoHeader: some View {
+        HStack(spacing: 12) {
+            // 회사 로고
+            CompanyLogo(symbol: viewModel.stockSymbol, size: 32)
+            
+            // 주식 심볼과 가격을 포함하는 HStack
+            HStack(spacing: 8) {
+                // 주식 심볼
+                Text(viewModel.stockSymbol)
+                    .font(.title2)
+                    .bold()
+                
+                // 가격
+                Text("$\(String(format: "%.2f", viewModel.currentPrice))")
+                    .font(.title2)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+        }
+        .padding(.horizontal)
+    }
+    
+    
+    // MARK: - News Card Components
     struct NewsCardLink: View {
         let news: StockNews
-        @EnvironmentObject private var viewModel: StockViewModel
-        @State private var translatedTitle: String = ""
         @Environment(\.openURL) var openURL
 
         var body: some View {
@@ -339,7 +450,7 @@ struct AnalysisView: View {
                 handleNewsClick()
             }) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(translatedTitle.isEmpty ? news.title : translatedTitle)
+                    Text(news.title)
                         .font(.subheadline)
                         .lineLimit(2)
                         .foregroundColor(.primary)
@@ -356,22 +467,14 @@ struct AnalysisView: View {
                 .cornerRadius(8)
             }
             .buttonStyle(NewsCardButtonStyle())
-            .onAppear {
-                translateTitle()
-            }
-            .onChange(of: viewModel.selectedLanguage) { oldValue, newValue in
-                translateTitle()
-            }
         }
         
         private func handleNewsClick() {
-            // URL이 유효한지 확인하고 필요한 인코딩 처리
             var urlString = news.link
             if !urlString.lowercased().hasPrefix("http") {
                 urlString = "https://" + urlString
             }
             
-            // URL 인코딩
             if let encodedString = urlString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
                let url = URL(string: encodedString) {
                 openURL(url) { accepted in
@@ -383,262 +486,182 @@ struct AnalysisView: View {
                 print("Invalid URL: \(urlString)")
             }
         }
-        
-        private func translateTitle() {
-            guard viewModel.selectedLanguage.code != "en" else {
-                translatedTitle = news.title
-                return
-            }
-            
-            Task {
-                do {
-                    let translated = try await TranslationManager.shared.translate(
-                        news.title,
-                        from: "en",
-                        to: viewModel.selectedLanguage.code
-                    )
-                    await MainActor.run {
-                        translatedTitle = translated
-                    }
-                } catch {
-                    print("News translation error: \(error)")
-                    translatedTitle = news.title
-                }
-            }
-        }
     }
 
-    struct NewsCardButtonStyle: ButtonStyle {
-        func makeBody(configuration: Configuration) -> some View {
-            configuration.label
-                .opacity(configuration.isPressed ? 0.7 : 1.0)
-                .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-                .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
-        }
-    }
-    
-    private func aiAnalysisSection(_ analysis: StockAnalysis) -> some View {
-        VStack(alignment: .leading, spacing: 15) {
-            HStack {
-                Text("AI Analysis")
-                    .font(.headline)
-                Spacer()
-                HStack(spacing: 4) {
-                    Text("Confidence:")
-                        .font(.caption)
-                    Text("\(analysis.percentage)%")
-                        .font(.caption)
-                        .bold()
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color.blue.opacity(0.1))
-                .cornerRadius(4)
-            }
-            
-            HStack {
-                Text(analysis.decision.rawValue)
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(
-                        Group {
-                            switch analysis.decision {
-                            case .bullish: Color.green
-                            case .bearish: Color.red
-                            case .neutral: Color.orange
-                            }
-                        }
-                    )
-                    .cornerRadius(8)
-                
-                Spacer()
-                
-                VStack(alignment: .trailing) {
-                    Text("Expected Next Day")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                    Text("$\(analysis.expectedNextDayPrice, specifier: "%.2f")")
-                        .font(.headline)
-                }
-            }
-            
-            Text(analysis.reason)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .padding(.top, 5)
-        }
-        .padding()
-        .background(Color.gray.opacity(0.1))
-        .cornerRadius(10)
-        .padding(.horizontal)
-    }
-    
-    // MARK: - Helper Functions
-    
-    private func handleSearchTextChange(_ newValue: String) {
-        let filtered = newValue.filter { $0.isLetter || $0.isWhitespace }
-        if filtered != newValue {
-            viewModel.stockSymbol = filtered
-            showTickerGuide = true
-        } else {
-            showTickerGuide = filtered.count > 5 || (!filtered.isEmpty && !viewModel.validateSymbol(filtered))
-        }
-        viewModel.searchSymbol(query: filtered)
-        showSuggestions = !filtered.isEmpty
-    }
-    
-    private func clearSearch() {
-        viewModel.stockSymbol = ""
-        showSuggestions = false
-        showTickerGuide = false
-    }
-    
-    private func selectSearchResult(_ symbol: String) {
-        viewModel.stockSymbol = symbol
-        showSuggestions = false
-        isTextFieldFocused = false
-        startSearch()
-    }
-    
-    private func startSearch() {
-        isTextFieldFocused = false
-        Task {
-            let success = await viewModel.fetchStockData()
-            if !success {
-                await MainActor.run {
-                    isTextFieldFocused = true
-                }
-            } else {
-                if let latestPrice = viewModel.dayData.first?.close {
-                    await MainActor.run {
-                        currentPrice = latestPrice
-                    }
-                }
-            }
-        }
-    }
-    
-    // recentSearchItem 메서드 수정
-    private func recentSearchItem(_ symbol: String) -> some View {
-        return Text(symbol)  // return 명시적 추가
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(15)
-            .foregroundColor(.primary)
-            .onTapGesture {
-                viewModel.stockSymbol = symbol
-            }
-            .contextMenu {
-                Button(role: .destructive) {
-                    symbolToDelete = symbol
-                    showDeleteConfirmation = true
-                } label: {
-                    Label("Delete", systemImage: "trash")
-                }
-            }
-        
-    }
-    
-    // MARK: - Support Views
-    
-    struct SentimentCard: View {
-        let title: String
-        let value: Double
-        
-        var body: some View {
-            VStack(alignment: .leading, spacing: 5) {
-                Text(title)
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
-                Text(String(format: "%.2f", value))
-                    .font(.headline)
-            }
-            .padding()
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(8)
-        }
-    }
-    
-    // NewsCard의 onChange 수정
-    struct NewsCard: View {
-        let news: StockNews
-        @EnvironmentObject private var viewModel: StockViewModel
-        @State private var translatedTitle: String = ""
-        
-        var body: some View {
-            Link(destination: URL(string: news.link) ?? URL(string: "https://finance.yahoo.com")!) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(translatedTitle.isEmpty ? news.title : translatedTitle)
-                        .font(.subheadline)
-                        .lineLimit(2)
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.leading)
-                    
-                    Text(news.pubDate)
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
-                .padding(.vertical, 8)
-                .padding(.horizontal)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(.systemBackground))
-                .cornerRadius(8)
-            }
-            .buttonStyle(PlainButtonStyle())
-            .onAppear {
-                translateTitle()
-            }
-            .onChange(of: viewModel.selectedLanguage) { oldValue, newValue in
-                translateTitle()
-            }
-        }
-        
-        private func translateTitle() {
-            guard viewModel.selectedLanguage.code != "en" else {
-                translatedTitle = news.title
-                return
-            }
-            
-            Task {
-                do {
-                    translatedTitle = try await TranslationManager.shared.translate(
-                        news.title,
-                        from: "en",
-                        to: viewModel.selectedLanguage.code
-                    )
-                } catch {
-                    print("News translation error: \(error)")
-                    translatedTitle = news.title
-                }
-            }
-        }
-    }
 
-    struct RecommendationBar: View {
-        let value: Int
-        let total: Int
-        let color: Color
-        
-        var height: CGFloat {
-            let percentage = CGFloat(value) / CGFloat(total)
-            return max(percentage * 100, 4) // 최소 높이 4
-        }
-        
-        var body: some View {
-            VStack {
-                if value > 0 {
-                    Text("\(value)")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                }
-                
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(color)
-                    .frame(width: 30, height: height)
-            }
-        }
+struct NewsCardButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.7 : 1.0)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
 }
+        
+        // MARK: - Analysis Section Components
+        private func aiAnalysisSection(_ analysis: StockAnalysis) -> some View {
+            VStack(alignment: .leading, spacing: 15) {
+                HStack {
+                    Text("AI Analysis")
+                        .font(.headline)
+                    Spacer()
+                    HStack(spacing: 4) {
+                        Text("Confidence:")
+                            .font(.caption)
+                        Text("\(analysis.percentage)%")
+                            .font(.caption)
+                            .bold()
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(4)
+                }
+                
+                HStack {
+                    Text(analysis.decision.rawValue)
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            Group {
+                                switch analysis.decision {
+                                case .bullish: Color.green
+                                case .bearish: Color.red
+                                case .neutral: Color.orange
+                                }
+                            }
+                        )
+                        .cornerRadius(8)
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .trailing) {
+                        Text("Expected Next Day")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        Text("$\(analysis.expectedNextDayPrice, specifier: "%.2f")")
+                            .font(.headline)
+                                            }
+                                        }
+                                        
+                                        Text(analysis.reason)
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                            .padding(.top, 5)
+                                    }
+                                    .padding()
+                                    .background(Color.gray.opacity(0.1))
+                                    .cornerRadius(10)
+                                    .padding(.horizontal)
+                                }
+                                
+                                // MARK: - Helper Functions
+                                private func handleSearchTextChange(_ newValue: String) {
+                                    let filtered = newValue.filter { $0.isLetter || $0.isWhitespace }
+                                    if filtered != newValue {
+                                        viewModel.stockSymbol = filtered
+                                        showTickerGuide = true
+                                    } else {
+                                        showTickerGuide = filtered.count > 5 || (!filtered.isEmpty && !viewModel.validateSymbol(filtered))
+                                    }
+                                    viewModel.searchSymbol(query: filtered)
+                                    showSuggestions = !filtered.isEmpty
+                                }
+                                
+                                private func clearSearch() {
+                                    viewModel.stockSymbol = ""
+                                    showSuggestions = false
+                                    showTickerGuide = false
+                                }
+                                
+                                private func selectSearchResult(_ symbol: String) {
+                                    viewModel.stockSymbol = symbol
+                                    showSuggestions = false
+                                    isTextFieldFocused = false
+                                    startSearch()
+                                }
+                                
+                                private func startSearch() {
+                                    isTextFieldFocused = false
+                                    Task {
+                                        let success = await viewModel.fetchStockData()
+                                        if !success {
+                                            await MainActor.run {
+                                                isTextFieldFocused = true
+                                            }
+                                        } else {
+                                            if let latestPrice = viewModel.dayData.first?.close {
+                                                await MainActor.run {
+                                                    currentPrice = latestPrice
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                private func recentSearchItem(_ symbol: String) -> some View {
+                                    Text(symbol)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Color.gray.opacity(0.1))
+                                        .cornerRadius(15)
+                                        .foregroundColor(.primary)
+                                        .onTapGesture {
+                                            viewModel.stockSymbol = symbol
+                                        }
+                                        .contextMenu {
+                                            Button(role: .destructive) {
+                                                symbolToDelete = symbol
+                                                showDeleteConfirmation = true
+                                            } label: {
+                                                Label("Delete", systemImage: "trash")
+                                            }
+                                        }
+                                }
+                                
+                                // MARK: - Support Views
+                                struct SentimentCard: View {
+                                    let title: String
+                                    let value: Double
+                                    
+                                    var body: some View {
+                                        VStack(alignment: .leading, spacing: 5) {
+                                            Text(title)
+                                                .font(.subheadline)
+                                                .foregroundColor(.gray)
+                                            Text(String(format: "%.2f", value))
+                                                .font(.headline)
+                                        }
+                                        .padding()
+                                        .background(Color.gray.opacity(0.1))
+                                        .cornerRadius(8)
+                                    }
+                                }
+
+                                struct RecommendationBar: View {
+                                    let value: Int
+                                    let total: Int
+                                    let color: Color
+                                    
+                                    var height: CGFloat {
+                                        let percentage = CGFloat(value) / CGFloat(total)
+                                        return max(percentage * 100, 4) // 최소 높이 4
+                                    }
+                                    
+                                    var body: some View {
+                                        VStack {
+                                            if value > 0 {
+                                                Text("\(value)")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.gray)
+                                            }
+                                            
+                                            RoundedRectangle(cornerRadius: 4)
+                                                .fill(color)
+                                                .frame(width: 30, height: height)
+                                        }
+                                    }
+                                }
+                            }

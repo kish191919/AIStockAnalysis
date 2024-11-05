@@ -27,23 +27,13 @@ struct ContentView: View {
                 }
                 .tag(1)
             
-            MarketView()
-                .tabItem {
-                    Label("Market", systemImage: "building.columns.fill")
-                }
-                .tag(2)
             
             HistoryView()
                 .tabItem {
                     Label("History", systemImage: "clock.fill")
                 }
-                .tag(3)
+                .tag(2)
             
-            WatchListView()
-                .tabItem {
-                    Label("Watch List", systemImage: "star.fill")
-                }
-                .tag(4)
         }
         .environmentObject(stockViewModel)
         .accentColor(.blue)

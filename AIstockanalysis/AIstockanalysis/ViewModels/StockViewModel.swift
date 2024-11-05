@@ -28,25 +28,23 @@ class StockViewModel: ObservableObject {
             if let encoded = try? JSONEncoder().encode(selectedLanguage) {
                 UserDefaults.standard.set(encoded, forKey: "selectedLanguage")
             }
-            if let analysis = stockAnalysis {
+            // 언어가 변경되면 현재 분석된 데이터를 새로운 언어로 다시 분석
+            if let jsonOutput = lastJSONOutput {
                 Task {
-                    let translatedAnalysis = await translateAnalysis(analysis)
-                    await MainActor.run {
-                        self.stockAnalysis = translatedAnalysis
-                    }
+                    await analyzeWithOpenAI(jsonData: jsonOutput)
                 }
             }
         }
     }
     
     private var searchTask: Task<Void, Never>?
-    private let openAIService = OpenAIService()
+    let openAIService = OpenAIService()
     private let viewContext: NSManagedObjectContext
-    private var translationCache: [String: String] = [:]
     
     init(context: NSManagedObjectContext) {
         self.viewContext = context
         
+        // 저장된 언어 설정 불러오기
         if let savedLanguageData = UserDefaults.standard.data(forKey: "selectedLanguage"),
            let savedLanguage = try? JSONDecoder().decode(AppLanguage.self, from: savedLanguageData) {
             self.selectedLanguage = savedLanguage
@@ -54,52 +52,10 @@ class StockViewModel: ObservableObject {
             self.selectedLanguage = AppLanguage.systemLanguage
         }
         
+        // 저장된 즐겨찾기 불러오기
         if let savedFavorites = UserDefaults.standard.stringArray(forKey: "favorites") {
             favorites = savedFavorites
         }
-    }
-    
-    // MARK: - Translation Methods
-    
-    func translateText(_ text: String) async throws -> String {
-        if selectedLanguage.code == "en" {
-            return text
-        }
-        
-        if let cached = translationCache[text] {
-            return cached
-        }
-        
-        let translated = try await TranslationManager.shared.translate(
-            text,
-            from: "en",
-            to: selectedLanguage.code
-        )
-        
-        translationCache[text] = translated
-        return translated
-    }
-    
-    func translateAnalysis(_ analysis: StockAnalysis) async -> StockAnalysis {
-        guard selectedLanguage.code != "en" else { return analysis }
-        
-        do {
-            let translatedReason = try await translateText(analysis.reason)
-            
-            return StockAnalysis(
-                decision: analysis.decision,
-                percentage: analysis.percentage,
-                reason: translatedReason,
-                expectedNextDayPrice: analysis.expectedNextDayPrice
-            )
-        } catch {
-            print("Translation error: \(error)")
-            return analysis
-        }
-    }
-    
-    private func clearTranslationCache() {
-        translationCache.removeAll()
     }
     
     // MARK: - Stock Data Methods
@@ -121,7 +77,6 @@ class StockViewModel: ObservableObject {
         do {
             let (day, month, news, sentiment, jsonOutput) = try await StockService.fetchStockData(symbol: stockSymbol.uppercased())
             
-              
             await MainActor.run {
                 self.dayData = day
                 self.monthData = month
@@ -138,12 +93,10 @@ class StockViewModel: ObservableObject {
             }
             
             if let jsonOutput = jsonOutput {
-                Task {
-                    await MainActor.run {
-                        self.lastJSONOutput = jsonOutput
-                    }
-                    await analyzeWithOpenAI(jsonData: jsonOutput)
+                await MainActor.run {
+                    self.lastJSONOutput = jsonOutput
                 }
+                await analyzeWithOpenAI(jsonData: jsonOutput)
             }
             
             return true
@@ -178,14 +131,16 @@ class StockViewModel: ObservableObject {
         }
         
         do {
-            let analysis = try await openAIService.analyzeStock(jsonData: jsonData)
-            let translatedAnalysis = await translateAnalysis(analysis)
+            let analysis = try await openAIService.analyzeStock(
+                jsonData: jsonData,
+                targetLanguage: selectedLanguage.code
+            )
             
             await MainActor.run {
-                self.stockAnalysis = translatedAnalysis
+                self.stockAnalysis = analysis
                 self.isAnalyzing = false
                 if let currentPrice = self.dayData.first?.close {
-                    self.saveAnalysisToHistory(translatedAnalysis, currentPrice: currentPrice)
+                    self.saveAnalysisToHistory(analysis, currentPrice: currentPrice)
                 }
                 self.lastAPIUsage = self.openAIService.getCurrentSessionUsage()
             }
@@ -253,7 +208,7 @@ class StockViewModel: ObservableObject {
     
     private func saveAnalysisToHistory(_ analysis: StockAnalysis, currentPrice: Double) {
         let historyItem = AnalysisHistoryEntity(context: viewContext)
-        let symbol = stockSymbol.uppercased()  // 대문자로 변환
+        let symbol = stockSymbol.uppercased()
         
         historyItem.id = UUID()
         historyItem.symbol = symbol
@@ -288,34 +243,6 @@ class StockViewModel: ObservableObject {
             print("Error saving analysis history: \(error)")
         }
     }
-
-    // 최근 접근 심볼 업데이트 함수 추가
-    private func updateLastAccessedSymbols(_ symbol: String) {
-        if let data = UserDefaults.standard.data(forKey: "lastAccessedSymbols"),
-           var symbols = try? JSONDecoder().decode([String].self, from: data) {
-            symbols.removeAll { $0 == symbol }
-            symbols.insert(symbol, at: 0)
-            if symbols.count > 20 {
-                symbols.removeLast()
-            }
-            if let encoded = try? JSONEncoder().encode(symbols) {
-                UserDefaults.standard.set(encoded, forKey: "lastAccessedSymbols")
-            }
-        } else {
-            if let encoded = try? JSONEncoder().encode([symbol]) {
-                UserDefaults.standard.set(encoded, forKey: "lastAccessedSymbols")
-            }
-        }
-    }
-    
-    func deleteHistoryItem(_ item: AnalysisHistoryEntity) {
-        viewContext.delete(item)
-        do {
-            try viewContext.save()
-        } catch {
-            print("Error deleting history item: \(error)")
-        }
-    }
     
     // MARK: - Utility Methods
     
@@ -324,19 +251,13 @@ class StockViewModel: ObservableObject {
         let symbolTest = NSPredicate(format:"SELF MATCHES %@", pattern)
         return symbolTest.evaluate(with: symbol)
     }
-    
-    private func mapTranslatedDecision(_ decision: String) -> StockAnalysis.Decision {
-        let uppercasedDecision = decision.uppercased()
-        
-        let bullishTerms = ["BULLISH", "강세", "強気", "强势", "強勢", "ALCISTA", "HAUSSIER", "BULLENMARKT", "RIALZISTA", "БЫЧИЙ"]
-        let bearishTerms = ["BEARISH", "약세", "弱気", "弱势", "弱勢", "BAJISTA", "BAISSIER", "BÄRENMARKT", "RIBASSISTA", "МЕДВЕЖИЙ"]
-        
-        if bullishTerms.contains(where: { uppercasedDecision.contains($0.uppercased()) }) {
-            return .bullish
-        } else if bearishTerms.contains(where: { uppercasedDecision.contains($0.uppercased()) }) {
-            return .bearish
-        } else {
-            return .neutral
+
+    func deleteHistoryItem(_ item: AnalysisHistoryEntity) {
+        viewContext.delete(item)
+        do {
+            try viewContext.save()
+        } catch {
+            print("Error deleting history item: \(error)")
         }
     }
 }
