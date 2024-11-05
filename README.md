@@ -28,27 +28,35 @@ AI Stock Analysis is an iOS application that combines real-time stock market dat
 ### Project Structure
 ```
 AIStockAnalysis/
-├── App/
-│   ├── AIStockAnalysisApp.swift
-│   └── ContentView.swift
+├── AIStockAnalysisApp.swift
+├── AnalysisHistoryEntity.swift
+├── ContentView.swift
+├── Persistence.swift
+|
 ├── Views/
-│   ├── Analysis/
-│   │   ├── AnalysisView.swift
-│   │   └── Components/
-│   ├── Chart/
-│   │   └── YahooFinanceChartView.swift
-│   └── Common/
+│   ├── Components/
+│   │   ├──MarketSentimentView.swift 
+|   |   └──YahooFinanceChartView.swift
+│   │   
+│   ├── AnalysisView.swift
+│   ├── DecisionBadge.swift
+│   ├── HistoryView.swift
+│   ├── HomeView.swift
+│   └── StockDetailView.swift 
+|
 ├── ViewModels/
 │   ├── StockViewModel.swift
 │   └── YahooChartViewModel.swift
+|
 ├── Models/
 │   ├── StockData.swift
 │   ├── OpenAIModels.swift
 │   └── AppLanguage.swift
-├── Services/
-│   ├── StockService.swift
-│   └── OpenAIService.swift
-└── Utilities/
+|
+└── Services/
+    ├── StockService.swift
+    └── OpenAIService.swift
+
 ```
 
 ### Key Components
@@ -73,7 +81,6 @@ AIStockAnalysis/
 - iOS 15.0+
 - Active Apple Developer Account
 - OpenAI API Key
-- Yahoo Finance API Access
 
 ### Setup
 1. Clone the repository
@@ -116,68 +123,6 @@ pod install  # If using CocoaPods
 - Persistent storage of favorite stocks
 - Analysis history tracking
 
-## Technical Details
-
-### Data Persistence
-The app uses a combination of Core Data and UserDefaults for data persistence:
-- Core Data: Analysis history and user data
-- UserDefaults: App settings and recent searches
-
-### Network Layer
-- URLSession with async/await
-- Custom error handling
-- Request retry logic
-
-### UI Components
-- Custom chart implementation
-- Reactive UI updates using Combine
-- Adaptive layout for different screen sizes
-
-## Security
-
-### API Key Protection
-- API keys stored in Config.plist
-- File excluded from git repository
-- Runtime encryption for sensitive data
-
-### Data Handling
-- Secure storage of user data
-- Network security with URLSession
-- Error handling and data validation
-
-## Performance
-
-### Optimization Techniques
-- Efficient data caching
-- Lazy loading of chart data
-- Background processing for API calls
-- Memory management for large datasets
-
-## Testing
-
-### Unit Tests
-- ViewModels testing
-- Service layer testing
-- Model validation
-
-### UI Tests
-- Core user flows
-- Edge case handling
-- Performance testing
-
-## Troubleshooting
-
-### Common Issues
-1. API Connection Issues
-   - Check internet connection
-   - Verify API key configuration
-   - Review request limits
-
-2. Chart Display Problems
-   - Clear app cache
-   - Check data format
-   - Verify timeframe selection
-
 ## Contributing
 Contributions are welcome! Please read our contributing guidelines before submitting pull requests.
 
@@ -187,15 +132,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Acknowledgments
 - OpenAI for GPT-4 API
 - Yahoo Finance for market data
-- Contributors and maintainers
-
-## Version History
-- v1.0.0 (2024-02): Initial release
-- v1.1.0 (2024-03): Multi-language support
-- v1.2.0 (2024-04): Enhanced chart features
-
-## Contact
-For support or queries, please contact [maintainer's email]
 
 ---
 © 2024 AI Stock Analysis App. All rights reserved.
