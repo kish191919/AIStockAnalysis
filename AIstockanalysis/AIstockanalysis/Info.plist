@@ -15,6 +15,11 @@
                 <key>NSIncludesSubdomains</key>
                 <true/>
             </dict>
+            <key>LSApplicationQueriesSchemes</key>
+            <array>
+                <string>http</string>
+                <string>https</string>
+            </array>
             <key>finnhub.io</key>
             <dict>
                 <key>NSIncludesSubdomains</key>

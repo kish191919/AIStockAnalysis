@@ -235,15 +235,22 @@ struct HomeView: View {
     
     private func startSearch() {
         isTextFieldFocused = false
+        
+        // 먼저 Analysis 탭으로 전환
+        withAnimation {
+            selectedTab = 1
+        }
+        
+        // 그 다음 데이터 페칭 시작
         Task {
             let success = await viewModel.fetchStockData()
-            if success {
-                await MainActor.run {
-                    selectedTab = 1  // Analysis 탭으로 전환
-                }
-            } else {
+            if !success {
                 await MainActor.run {
                     isTextFieldFocused = true
+                    // 데이터 페칭 실패시 홈으로 돌아가기
+                    withAnimation {
+                        selectedTab = 0
+                    }
                 }
             }
         }

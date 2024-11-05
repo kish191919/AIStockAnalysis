@@ -440,15 +440,11 @@ struct AnalysisView: View {
     }
     
     
-    // MARK: - News Card Components
     struct NewsCardLink: View {
         let news: StockNews
-        @Environment(\.openURL) var openURL
-
+        
         var body: some View {
-            Button(action: {
-                handleNewsClick()
-            }) {
+            Link(destination: getURL()) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(news.title)
                         .font(.subheadline)
@@ -456,9 +452,17 @@ struct AnalysisView: View {
                         .foregroundColor(.primary)
                         .multilineTextAlignment(.leading)
                     
-                    Text(news.pubDate)
-                        .font(.caption)
-                        .foregroundColor(.gray)
+                    HStack {
+                        Text(news.pubDate)
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        
+                        Spacer()
+                        
+                        Image(systemName: "arrow.up.right")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                    }
                 }
                 .padding(.vertical, 8)
                 .padding(.horizontal)
@@ -469,93 +473,91 @@ struct AnalysisView: View {
             .buttonStyle(NewsCardButtonStyle())
         }
         
-        private func handleNewsClick() {
-            var urlString = news.link
+        private func getURL() -> URL {
+            var urlString = news.link.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            // URL이 프로토콜을 포함하지 않는 경우 https를 추가
             if !urlString.lowercased().hasPrefix("http") {
                 urlString = "https://" + urlString
             }
             
-            if let encodedString = urlString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-               let url = URL(string: encodedString) {
-                openURL(url) { accepted in
-                    if !accepted {
-                        print("URL could not be opened: \(url)")
-                    }
-                }
-            } else {
-                print("Invalid URL: \(urlString)")
-            }
+            return URL(string: urlString) ?? URL(string: "https://finance.yahoo.com")!
         }
     }
 
-
-struct NewsCardButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .opacity(configuration.isPressed ? 0.7 : 1.0)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+    // 버튼 스타일 수정
+    struct NewsCardButtonStyle: ButtonStyle {
+        func makeBody(configuration: Configuration) -> some View {
+            configuration.label
+                .opacity(configuration.isPressed ? 0.7 : 1.0)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(configuration.isPressed ? Color.gray.opacity(0.1) : Color.clear)
+                )
+                .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+                .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+        }
     }
-}
         
         // MARK: - Analysis Section Components
-        private func aiAnalysisSection(_ analysis: StockAnalysis) -> some View {
-            VStack(alignment: .leading, spacing: 15) {
-                HStack {
-                    Text("AI Analysis")
-                        .font(.headline)
-                    Spacer()
-                    HStack(spacing: 4) {
-                        Text("Confidence:")
-                            .font(.caption)
-                        Text("\(analysis.percentage)%")
-                            .font(.caption)
-                            .bold()
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.blue.opacity(0.1))
-                    .cornerRadius(4)
+    // AnalysisView의 aiAnalysisSection 수정
+    private func aiAnalysisSection(_ analysis: StockAnalysis) -> some View {
+        VStack(alignment: .leading, spacing: 15) {
+            HStack {
+                Text("AI Analysis")
+                    .font(.headline)
+                Spacer()
+                HStack(spacing: 4) {
+                    Text("Confidence:")
+                        .font(.caption)
+                    Text("\(analysis.percentage)%")
+                        .font(.caption)
+                        .bold()
                 }
-                
-                HStack {
-                    Text(analysis.decision.rawValue)
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(
-                            Group {
-                                switch analysis.decision {
-                                case .bullish: Color.green
-                                case .bearish: Color.red
-                                case .neutral: Color.orange
-                                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.blue.opacity(0.1))
+                .cornerRadius(4)
+            }
+            
+            HStack {
+                Text(analysis.decision.rawValue)
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        Group {
+                            switch analysis.decision {
+                            case .bullish: Color.green
+                            case .bearish: Color.red
+                            case .neutral: Color.orange
                             }
-                        )
-                        .cornerRadius(8)
-                    
-                    Spacer()
-                    
-                    VStack(alignment: .trailing) {
-                        Text("Expected Next Day")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        Text("$\(analysis.expectedNextDayPrice, specifier: "%.2f")")
-                            .font(.headline)
-                                            }
-                                        }
-                                        
-                                        Text(analysis.reason)
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-                                            .padding(.top, 5)
-                                    }
-                                    .padding()
-                                    .background(Color.gray.opacity(0.1))
-                                    .cornerRadius(10)
-                                    .padding(.horizontal)
-                                }
+                        }
+                    )
+                    .cornerRadius(8)
+                
+                Spacer()
+                
+                VStack(alignment: .trailing) {
+                    Text("Expected Next Day")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    Text("$\(analysis.expectedNextDayPrice, specifier: "%.2f")")
+                        .font(.headline)
+                }
+            }
+            
+            Text(analysis.reason)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .padding(.top, 5)
+        }
+        .padding()
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(10)
+        .padding(.horizontal)
+    }
                                 
                                 // MARK: - Helper Functions
                                 private func handleSearchTextChange(_ newValue: String) {

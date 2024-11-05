@@ -2,9 +2,9 @@
 //Models/StockData.swift
 import Foundation
 
-// MARK: - Data Models
-public struct StockData: Identifiable {
-    public let id = UUID()
+// StockData에 Codable 추가
+public struct StockData: Identifiable, Codable {
+    public let id: UUID
     public let date: Date
     public let open: Double
     public let high: Double
@@ -12,7 +12,12 @@ public struct StockData: Identifiable {
     public let close: Double
     public let volume: Int
     
+    enum CodingKeys: String, CodingKey {
+        case id, date, open, high, low, close, volume
+    }
+    
     public init(date: Date, open: Double, high: Double, low: Double, close: Double, volume: Int) {
+        self.id = UUID()
         self.date = date
         self.open = open
         self.high = high

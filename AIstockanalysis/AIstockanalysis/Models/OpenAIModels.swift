@@ -145,3 +145,55 @@ extension StockAnalysis {
         )
     }
 }
+
+// StockViewModel의 저장/불러오기 함수 수정
+// StockViewModel extension 수정
+extension StockViewModel {
+    private func saveLastSearchResult() {
+        guard !dayData.isEmpty else { return }
+        
+        let lastSearchData = LastSearchData(
+            symbol: stockSymbol,
+            dayData: dayData,
+            monthData: monthData,
+            newsData: newsData,
+            marketSentiment: marketSentiment,
+            stockAnalysis: stockAnalysis,  // Optional이므로 직접 전달 가능
+            currentPrice: currentPrice
+        )
+        
+        do {
+            let encoded = try JSONEncoder().encode(lastSearchData)
+            UserDefaults.standard.set(encoded, forKey: "lastSearchResult")
+            print("Successfully saved last search result")
+        } catch {
+            print("Error saving last search result: \(error)")
+        }
+    }
+    
+    private func loadLastSearchResult() {
+        guard let savedData = UserDefaults.standard.data(forKey: "lastSearchResult") else {
+            print("No saved search result found")
+            return
+        }
+        
+        do {
+            let lastSearch = try JSONDecoder().decode(LastSearchData.self, from: savedData)
+            DispatchQueue.main.async {
+                self.stockSymbol = lastSearch.symbol
+                self.dayData = lastSearch.dayData
+                self.monthData = lastSearch.monthData
+                self.newsData = lastSearch.newsData
+                self.marketSentiment = lastSearch.marketSentiment
+                self.stockAnalysis = lastSearch.stockAnalysis
+                self.currentPrice = lastSearch.currentPrice
+                
+                // 차트 데이터도 다시 로드
+                self.chartViewModel.fetchChartData(symbol: self.stockSymbol, period: .oneDay)
+            }
+            print("Successfully loaded last search result")
+        } catch {
+            print("Error loading last search result: \(error)")
+        }
+    }
+}

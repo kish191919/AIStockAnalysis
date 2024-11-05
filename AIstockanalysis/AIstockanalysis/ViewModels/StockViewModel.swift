@@ -36,28 +36,207 @@ class StockViewModel: ObservableObject {
             }
         }
     }
-    
+    // 분석 결과를 저장할 키
+    private let lastSearchKey = "lastSearchResult"
+    private let lastAnalysisKey = "lastAnalysisResult"
     private var searchTask: Task<Void, Never>?
     let openAIService = OpenAIService()
     private let viewContext: NSManagedObjectContext
     
     init(context: NSManagedObjectContext) {
-        self.viewContext = context
+            self.viewContext = context
+            
+            // 저장된 언어 설정 불러오기
+            if let savedLanguageData = UserDefaults.standard.data(forKey: "selectedLanguage"),
+               let savedLanguage = try? JSONDecoder().decode(AppLanguage.self, from: savedLanguageData) {
+                self.selectedLanguage = savedLanguage
+            } else {
+                self.selectedLanguage = AppLanguage.systemLanguage
+            }
+            
+            // 저장된 즐겨찾기 불러오기
+            if let savedFavorites = UserDefaults.standard.stringArray(forKey: "favorites") {
+                favorites = savedFavorites
+            }
+            
+            // 마지막 데이터 로드
+            loadLastData()
+        }
+    
+    
+    
+        private func loadLastData() {
+                print("🔄 Starting to load last data...")
+                
+            // 1. 먼저 마지막 검색 결과 로드
+                if let savedSearchData = UserDefaults.standard.data(forKey: lastSearchKey) {
+                    do {
+                        let lastSearch = try JSONDecoder().decode(LastSearchData.self, from: savedSearchData) // 여기를 수정
+                        self.stockSymbol = lastSearch.symbol
+                        self.dayData = lastSearch.dayData
+                        self.monthData = lastSearch.monthData
+                        self.newsData = lastSearch.newsData
+                        self.marketSentiment = lastSearch.marketSentiment
+                        self.currentPrice = lastSearch.currentPrice
+                        
+                        if let savedAnalysis = lastSearch.stockAnalysis {
+                            print("📊 Found analysis in search data for symbol: \(lastSearch.symbol)")
+                            self.stockAnalysis = savedAnalysis
+                        }
+                        
+                        self.chartViewModel.fetchChartData(symbol: self.stockSymbol, period: .oneDay)
+                        print("✅ Successfully loaded search data for symbol: \(lastSearch.symbol)")
+                    } catch {
+                        print("❌ Error loading search data: \(error)")
+                    }
+                }
+                
+                // 2. 별도 저장된 분석 결과 확인
+                if self.stockAnalysis == nil {
+                    if let savedAnalysisData = UserDefaults.standard.data(forKey: lastAnalysisKey) {
+                        do {
+                            let analysisData = try JSONDecoder().decode(AnalysisData.self, from: savedAnalysisData)
+                            print("📊 Found separate analysis data for symbol: \(analysisData.symbol)")
+                            if analysisData.symbol == self.stockSymbol {
+                                self.stockAnalysis = analysisData.analysis
+                                print("✅ Loaded analysis from separate storage")
+                            }
+                        } catch {
+                            print("❌ Error loading analysis data: \(error)")
+                        }
+                    }
+                }
+            }
         
-        // 저장된 언어 설정 불러오기
-        if let savedLanguageData = UserDefaults.standard.data(forKey: "selectedLanguage"),
-           let savedLanguage = try? JSONDecoder().decode(AppLanguage.self, from: savedLanguageData) {
-            self.selectedLanguage = savedLanguage
-        } else {
-            self.selectedLanguage = AppLanguage.systemLanguage
+    private func saveLastData() {
+            print("💾 Starting to save current data...")
+            
+            // 1. 검색 결과 저장
+            if !dayData.isEmpty {
+                let lastSearchData = LastSearchData(
+                    symbol: stockSymbol,
+                    dayData: dayData,
+                    monthData: monthData,
+                    newsData: newsData,
+                    marketSentiment: marketSentiment,
+                    stockAnalysis: stockAnalysis,
+                    currentPrice: currentPrice
+                )
+                
+                do {
+                    let encoded = try JSONEncoder().encode(lastSearchData)
+                    UserDefaults.standard.set(encoded, forKey: lastSearchKey)
+                    print("✅ Successfully saved search data for \(stockSymbol)")
+                } catch {
+                    print("❌ Error saving search data: \(error)")
+                }
+            }
+            
+            // 2. 분석 결과 별도 저장
+            if let analysis = stockAnalysis {
+                let analysisData = AnalysisData(
+                    symbol: stockSymbol,
+                    analysis: analysis,
+                    timestamp: Date(),
+                    currentPrice: currentPrice
+                )
+                
+                do {
+                    let encoded = try JSONEncoder().encode(analysisData)
+                    UserDefaults.standard.set(encoded, forKey: lastAnalysisKey)
+                    print("✅ Successfully saved analysis data for \(stockSymbol)")
+                } catch {
+                    print("❌ Error saving analysis data: \(error)")
+                }
+            }
+            
+            // 3. 변경사항 즉시 저장
+            UserDefaults.standard.synchronize()
+        }
+            
+        private func saveLastSearchResult() {
+            guard !dayData.isEmpty else { return }
+            
+            let lastSearchData = LastSearchData(
+                symbol: stockSymbol,
+                dayData: dayData,
+                monthData: monthData,
+                newsData: newsData,
+                marketSentiment: marketSentiment,
+                stockAnalysis: stockAnalysis,  // 추가된 부분
+                currentPrice: currentPrice
+            )
+            
+            do {
+                let encoded = try JSONEncoder().encode(lastSearchData)
+                UserDefaults.standard.set(encoded, forKey: lastSearchKey)
+                print("✓ Successfully saved search result")
+            } catch {
+                print("❌ Error saving search result: \(error)")
+            }
+        }
+    private func saveAnalysisResult(_ analysis: StockAnalysis) {
+            let analysisData = AnalysisData(
+                symbol: stockSymbol,
+                analysis: analysis,
+                timestamp: Date(),
+                currentPrice: currentPrice
+            )
+            
+            do {
+                let encoded = try JSONEncoder().encode(analysisData)
+                UserDefaults.standard.set(encoded, forKey: lastAnalysisKey)
+                print("✓ Successfully saved analysis result for \(stockSymbol)")
+            } catch {
+                print("❌ Error saving analysis result: \(error)")
+            }
         }
         
-        // 저장된 즐겨찾기 불러오기
-        if let savedFavorites = UserDefaults.standard.stringArray(forKey: "favorites") {
-            favorites = savedFavorites
+    private func loadLastSearchResult() {
+        guard let savedData = UserDefaults.standard.data(forKey: lastSearchKey) else {
+            print("ℹ️ No saved search result found")
+            return
+        }
+        
+        do {
+            let lastSearch = try JSONDecoder().decode(LastSearchData.self, from: savedData)
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.stockSymbol = lastSearch.symbol
+                self.dayData = lastSearch.dayData
+                self.monthData = lastSearch.monthData
+                self.newsData = lastSearch.newsData
+                self.marketSentiment = lastSearch.marketSentiment
+                self.currentPrice = lastSearch.currentPrice
+                self.stockAnalysis = lastSearch.stockAnalysis  // stockAnalysis도 함께 로드
+                self.chartViewModel.fetchChartData(symbol: self.stockSymbol, period: .oneDay)
+            }
+            print("✓ Successfully loaded search result with analysis")
+        } catch {
+            print("❌ Error loading search result: \(error)")
+        }
+    }
+
+    private func loadLastAnalysis() {
+        guard let savedData = UserDefaults.standard.data(forKey: lastAnalysisKey) else {
+            print("ℹ️ No saved analysis result found")
+            return
+        }
+        
+        do {
+            let analysisData = try JSONDecoder().decode(AnalysisData.self, from: savedData)
+            // 현재 심볼과 일치할 때만 로드하는 조건 제거
+            DispatchQueue.main.async { [weak self] in
+                self?.stockAnalysis = analysisData.analysis
+                print("✓ Successfully loaded analysis for symbol: \(analysisData.symbol)")
+            }
+        } catch {
+            print("❌ Error loading analysis result: \(error)")
         }
     }
     
+
+        
     // MARK: - Stock Data Methods
     
     func fetchStockData() async -> Bool {
@@ -88,6 +267,9 @@ class StockViewModel: ObservableObject {
                 if let currentPrice = getCurrentPrice(day) {
                     self.currentPrice = currentPrice
                 }
+                
+                // 데이터 저장
+                self.saveLastData()
                 
                 self.chartViewModel.fetchChartData(symbol: self.stockSymbol, period: .oneDay)
             }
@@ -125,32 +307,34 @@ class StockViewModel: ObservableObject {
     // MARK: - OpenAI Analysis
     
     private func analyzeWithOpenAI(jsonData: String) async {
-        await MainActor.run {
-            isAnalyzing = true
-            stockAnalysis = nil
-        }
-        
-        do {
-            let analysis = try await openAIService.analyzeStock(
-                jsonData: jsonData,
-                targetLanguage: selectedLanguage.code
-            )
+            await MainActor.run {
+                isAnalyzing = true
+                stockAnalysis = nil
+            }
             
-            await MainActor.run {
-                self.stockAnalysis = analysis
-                self.isAnalyzing = false
-                if let currentPrice = self.dayData.first?.close {
-                    self.saveAnalysisToHistory(analysis, currentPrice: currentPrice)
+            do {
+                let analysis = try await openAIService.analyzeStock(
+                    jsonData: jsonData,
+                    targetLanguage: selectedLanguage.code
+                )
+                
+                await MainActor.run {
+                    self.stockAnalysis = analysis
+                    self.isAnalyzing = false
+                    if let currentPrice = self.dayData.first?.close {
+                        self.saveAnalysisToHistory(analysis, currentPrice: currentPrice)
+                        // 분석 결과 저장
+                        self.saveAnalysisResult(analysis)
+                    }
+                    self.lastAPIUsage = self.openAIService.getCurrentSessionUsage()
                 }
-                self.lastAPIUsage = self.openAIService.getCurrentSessionUsage()
-            }
-        } catch {
-            print("❌ OpenAI Analysis error: \(error.localizedDescription)")
-            await MainActor.run {
-                self.isAnalyzing = false
+            } catch {
+                print("❌ OpenAI Analysis error: \(error.localizedDescription)")
+                await MainActor.run {
+                    self.isAnalyzing = false
+                }
             }
         }
-    }
     
     // MARK: - Search Methods
     
@@ -261,3 +445,23 @@ class StockViewModel: ObservableObject {
         }
     }
 }
+
+
+// LastSearchData 구조체 수정
+struct LastSearchData: Codable {
+    let symbol: String
+    let dayData: [StockData]
+    let monthData: [StockData]
+    let newsData: [StockNews]
+    let marketSentiment: MarketSentiment
+    let stockAnalysis: StockAnalysis?  // Optional로 추가
+    let currentPrice: Double
+}
+
+struct AnalysisData: Codable {
+    let symbol: String
+    let analysis: StockAnalysis
+    let timestamp: Date
+    let currentPrice: Double
+}
+
